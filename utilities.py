@@ -1,6 +1,5 @@
 """Вспомогательные функции, используемые в нескольких работах"""
 
-import re
 from typing import Iterable
 import numpy as np
 
@@ -19,8 +18,8 @@ def parse_matrix(s: Iterable[str]) -> np.ndarray:
     # парсинг файла
     matrix_list = []
     for line in s:
-        r = re.findall(r"([-+]?\d+(\.\d+)?)", line)
-        matrix_list.append([float(i[0]) for i in r])
+        r = list(map(float, line.split()))
+        matrix_list.append(r)
 
     # проверка, что все строки содержат одинаковое число элементов
     n = len(matrix_list[0])
