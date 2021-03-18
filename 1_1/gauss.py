@@ -84,7 +84,7 @@ def lu_solve(l: np.ndarray, u: np.ndarray, b: np.ndarray) -> np.ndarray:
     :param l: нижняя треугольная матрица
     :param u: верхняя треугольная матрица
     :param b: вектор правых частей СЛАУ
-    :return:
+    :return: вектор-решение СЛАУ
     """
 
     n = l.shape[0]
