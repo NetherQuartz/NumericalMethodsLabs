@@ -198,7 +198,6 @@ def main(src, test=False, shape=50, it=500):
         print(f"\nВремя lu_decomposition:\t{np.average(times_my) * 1e-9:.10f} секунд")
         print(f"Время scipy.linalg.lu:\t{np.average(times_sp) * 1e-9:.10f} секунд")
 
-
         print("\nТест решения СЛАУ:")
         times_my = []
         times_np = []
