@@ -23,23 +23,22 @@ def lu_decomposition(matrix: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarray)
 
     n = matrix.shape[0]
 
-    l = np.identity(n)
+    l = np.zeros_like(matrix)
     u = np.copy(matrix)
 
     p = np.identity(n)
 
     for j in range(n - 1):
-        if u[j, j] == 0:
-            col: np.ndarray = matrix[j:, j]
-            m = np.abs(col).argmax() + j
-            if m > j:
-                p[[j, m]] = p[[m, j]]
-                u = p @ u
+        m = np.abs(u[j:, j]).argmax() + j
+        p[[j, m]] = p[[m, j]]
+        l[[j, m]] = l[[m, j]]
+        u[[j, m]] = u[[m, j]]
 
         for i in range(j + 1, n):
             l[i, j] = u[i, j] / u[j, j]
             u[i, :] -= u[j, :] * l[i, j]
 
+    l[np.diag_indices(n)] = 1
     return p, l, u
 
 
@@ -154,17 +153,23 @@ def main(src, test=False, shape=50, it=500):
     print("b:", b)
 
     p, l, u = lu_decomposition(a)
+
+    print(f"PLU:\n{p.T @ l @ u}")
+
     print(f"P:\n{p}\nL:\n{l}\nU:\n{u}")
 
     x = lu_solve(l, u, p @ b)
     print(f"Решение системы: {x}")
+    print(np.linalg.solve(a, b))
 
-    print(f"Определитель иатрицы A: {lu_det(u, p)}")
+    print(f"Определитель матрицы A: {lu_det(u, p)}")
+    print(np.linalg.det(a))
 
     inv = lu_inv(p, l, u)
     print("Обратная матрица:", inv, sep="\n")
+    print(np.linalg.inv(a))
 
-    print(f"AA^-1=E: {np.allclose(np.identity(a.shape[0]), inv @ a)}")
+    print(f"AA^-1=E: {np.allclose(np.identity(a.shape[0]), a @ inv)}")
 
     # тесты на случайно сгенерированных матрицах
     if test:
@@ -189,7 +194,7 @@ def main(src, test=False, shape=50, it=500):
 
             times_sp.append(time.time_ns() - prev)
 
-            if not np.allclose(p @ l @ u, a):
+            if not np.allclose(p.T @ l @ u, a):
                 print(a)
                 print(l)
                 print(u)
