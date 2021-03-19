@@ -119,9 +119,9 @@ def lu_inv(p: np.ndarray, l: np.ndarray, u: np.ndarray) -> np.ndarray:
     assert lu_det(u, p) != 0
 
     n = u.shape[0]
-    inv = np.identity(n)  # оптимизация памяти путём перезаписи столбцов единичной матрицы
+    inv = p @ np.identity(n)  # оптимизация памяти путём перезаписи столбцов единичной матрицы
 
-    # решаем СЛАУ LUX=E
+    # решаем СЛАУ LUX=PE
     for j in range(n):
         inv[:, j] = lu_solve(l, u, inv[:, j])
     return inv
