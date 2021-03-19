@@ -160,110 +160,119 @@ def main(src, test=False, shape=50, it=500):
 
     x = lu_solve(l, u, p @ b)
     print(f"Решение системы: {x}")
-    print(np.linalg.solve(a, b))
+    # print(np.linalg.solve(a, b))
 
     print(f"Определитель матрицы A: {lu_det(u, p)}")
-    print(np.linalg.det(a))
+    # print(np.linalg.det(a))
 
     inv = lu_inv(p, l, u)
     print("Обратная матрица:", inv, sep="\n")
-    print(np.linalg.inv(a))
+    # print(np.linalg.inv(a))
 
     print(f"AA^-1=E: {np.allclose(np.identity(a.shape[0]), a @ inv)}")
 
     # тесты на случайно сгенерированных матрицах
     if test:
+        run_test(shape, it)
 
-        print(f"\nТест времени работы LU-разложения матриц {shape}x{shape}, {it} итераций:")
 
-        times_my = []
-        times_sp = []
-        for _ in tqdm(range(it)):
+def run_test(shape: int, it: int):
+    """Тестирование LU-разложения, решения СЛАУ и обращения матриц с замером времени и сравнением
+    с функциями из numpy и scipy.
 
-            a = np.random.rand(shape, shape) * 100
+    :param shape: размер матриц
+    :param it: количество тестов
+    """
+    print(f"\nТест времени работы LU-разложения матриц {shape}x{shape}, {it} итераций:")
 
-            prev = time.time_ns()
+    times_my = []
+    times_sp = []
+    for _ in tqdm(range(it)):
 
-            p, l, u = lu_decomposition(a)
+        a = np.random.rand(shape, shape) * 100
 
-            times_my.append(time.time_ns() - prev)
+        prev = time.time_ns()
 
-            prev = time.time_ns()
+        p, l, u = lu_decomposition(a)
 
-            scipy.linalg.lu(a)
+        times_my.append(time.time_ns() - prev)
 
-            times_sp.append(time.time_ns() - prev)
+        prev = time.time_ns()
 
-            if not np.allclose(p.T @ l @ u, a):
-                print(a)
-                print(l)
-                print(u)
-                break
+        scipy.linalg.lu(a)
 
-        print(f"\nВремя lu_decomposition:\t{np.average(times_my) * 1e-9:.10f} секунд")
-        print(f"Время scipy.linalg.lu:\t{np.average(times_sp) * 1e-9:.10f} секунд")
+        times_sp.append(time.time_ns() - prev)
 
-        print("\nТест решения СЛАУ:")
-        times_my = []
-        times_np = []
-        for i in tqdm(range(it)):
-            a = np.random.rand(shape, shape) * 100
-            p, l, u = lu_decomposition(a)
-            b = np.random.rand(shape) * 100
-            pb = p @ b
+        if not np.allclose(p.T @ l @ u, a):
+            print(a)
+            print(l)
+            print(u)
+            break
 
-            prev = time.time_ns()
+    print(f"\nВремя lu_decomposition:\t{np.average(times_my) * 1e-9:.10f} секунд")
+    print(f"Время scipy.linalg.lu:\t{np.average(times_sp) * 1e-9:.10f} секунд")
 
-            x = lu_solve(l, u, pb)
+    print("\nТест решения СЛАУ:")
+    times_my = []
+    times_np = []
+    for i in tqdm(range(it)):
+        a = np.random.rand(shape, shape) * 100
+        p, l, u = lu_decomposition(a)
+        b = np.random.rand(shape) * 100
+        pb = p @ b
 
-            times_my.append(time.time_ns() - prev)
+        prev = time.time_ns()
 
-            prev = time.time_ns()
+        x = lu_solve(l, u, pb)
 
-            z = np.linalg.solve(l, pb)
-            xn = np.linalg.solve(u, z)
+        times_my.append(time.time_ns() - prev)
 
-            times_np.append(time.time_ns() - prev)
+        prev = time.time_ns()
 
-            if not np.allclose(x, xn):
-                times_my.pop(-1)
-                times_np.pop(-1)
-                print(a)
-                print(b)
-                break
+        z = np.linalg.solve(l, pb)
+        xn = np.linalg.solve(u, z)
 
-        print(f"\nПройдено тестов {i + 1}/{it}")
-        print(f"Время lu_solve: \t\t\t{np.average(times_my) * 1e-9:.10f} секунд")
-        print(f"Время numpy.linalg.solve: \t{np.average(times_np) * 1e-9:.10f} секунд")
+        times_np.append(time.time_ns() - prev)
 
-        print("\nТест обращения:")
-        times_my = []
-        times_np = []
-        for i in tqdm(range(it)):
-            a = np.random.rand(shape, shape) * 100
+        if not np.allclose(x, xn):
+            times_my.pop(-1)
+            times_np.pop(-1)
+            print(a)
+            print(b)
+            break
 
-            prev = time.time_ns()
+    print(f"\nПройдено тестов {i + 1}/{it}")
+    print(f"Время lu_solve: \t\t\t{np.average(times_my) * 1e-9:.10f} секунд")
+    print(f"Время numpy.linalg.solve: \t{np.average(times_np) * 1e-9:.10f} секунд")
 
-            inv = lu_inv(*lu_decomposition(a))
+    print("\nТест обращения:")
+    times_my = []
+    times_np = []
+    for i in tqdm(range(it)):
+        a = np.random.rand(shape, shape) * 100
 
-            times_my.append(time.time_ns() - prev)
+        prev = time.time_ns()
 
-            prev = time.time_ns()
+        inv = lu_inv(*lu_decomposition(a))
 
-            invn = np.linalg.inv(a)
+        times_my.append(time.time_ns() - prev)
 
-            times_np.append(time.time_ns() - prev)
+        prev = time.time_ns()
 
-            if not np.allclose(inv, invn):
-                times_my.pop(-1)
-                times_np.pop(-1)
-                print(a)
-                print(b)
-                break
+        invn = np.linalg.inv(a)
 
-        print(f"\nПройдено тестов {i + 1}/{it}")
-        print(f"Время lu_inv: \t\t\t{np.average(times_my) * 1e-9:.10f} секунд")
-        print(f"Время numpy.linalg.inv: {np.average(times_np) * 1e-9:.10f} секунд")
+        times_np.append(time.time_ns() - prev)
+
+        if not np.allclose(inv, invn):
+            times_my.pop(-1)
+            times_np.pop(-1)
+            print(a)
+            print(b)
+            break
+
+    print(f"\nПройдено тестов {i + 1}/{it}")
+    print(f"Время lu_inv: \t\t\t{np.average(times_my) * 1e-9:.10f} секунд")
+    print(f"Время numpy.linalg.inv: {np.average(times_np) * 1e-9:.10f} секунд")
 
 
 if __name__ == "__main__":
