@@ -65,15 +65,20 @@ def perm_parity(p: np.ndarray) -> int:
     return parity
 
 
-def lu_det(u: np.ndarray, p: np.ndarray) -> float:
+def lu_det(u: np.ndarray, p: np.ndarray = None, drop_sign: bool = False) -> float:
     """Вычисление определителя матрицы по её LU-разложению
 
     :param u: верхняя треугольная матрица LU-разложения
     :param p: матрица перестановок
+    :param drop_sign: если True, не гарантируется правильность знака определителя
     :return: определитель
     """
 
-    return perm_parity(p) * np.product(np.diagonal(u))
+    d = np.product(np.diag(u))
+    if not drop_sign:
+        d *= perm_parity(p)
+
+    return d
 
 
 def lu_solve(l: np.ndarray, u: np.ndarray, b: np.ndarray) -> np.ndarray:
