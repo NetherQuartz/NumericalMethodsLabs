@@ -94,18 +94,14 @@ def seidel(a: np.ndarray, b: np.ndarray, eps: float = 0.01, count_it=False) -> n
 
     alpha, beta = make_alpha_beta(a, b)
 
-    B = np.tril(alpha)
-    C = np.triu(alpha)
-
-    B_inv = lu_inv(*lu_decomposition(np.identity(a.shape[0]) - B))
-    m1 = B_inv @ C
-    m2 = B_inv @ beta
-
     x = np.copy(beta)
     eps_k = eps + 1
     count = 1
     while eps_k >= eps:
-        x_new = m1 @ x + m2
+        x_new = np.copy(x)
+        for i in range(len(x)):
+            x_new[i] = beta[i] + alpha[i, :] @ x_new
+
         eps_k = vector_norm(x - x_new)
         x = x_new
         count += 1
