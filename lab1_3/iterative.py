@@ -155,6 +155,7 @@ def main(src, test=False, eps=0.01):
         plt.xticks(powers[::2])
         plt.yticks(range(0, max(fp[-1], z[-1]), 5))
         plt.grid(True)
+        plt.savefig("benchmark.jpg", dpi=300)
         plt.show()
 
 
