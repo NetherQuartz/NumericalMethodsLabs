@@ -132,5 +132,5 @@ dmypy.json
 poetry.lock
 
 # pictures
-*.jpg
-*.png
+/lab*/*.jpg
+/lab*/*.png
