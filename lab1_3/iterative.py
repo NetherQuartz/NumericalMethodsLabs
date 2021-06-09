@@ -139,19 +139,21 @@ def main(src, test=False, eps=0.01):
 
     # анализ влияния точности на число итераций
     if test:
-        epsilons = np.arange(1e-3, 0.5, 5e-3)
+        powers = np.arange(0, 11, .5)  # порядки эпсилонов (eps = 10 ** -p)
         fp = []
         z = []
-        for ep in epsilons:
-            fp.append(fixed_point(a, b, ep, count_it=True)[1])
-            z.append(seidel(a, b, ep, count_it=True)[1])
+        for p in powers:
+            fp.append(fixed_point(a, b, 10 ** -p, count_it=True)[1])
+            z.append(seidel(a, b, 10 ** -p, count_it=True)[1])
 
-        plt.plot(epsilons, fp, label="Метод простых итераций")
-        plt.plot(epsilons, z, label="Метод Зейделя")
+        plt.plot(powers, fp, label="Метод простых итераций")
+        plt.plot(powers, z, label="Метод Зейделя")
         plt.legend()
         plt.title("Зависимость числа итераций от точности")
-        plt.xlabel("$\epsilon$")
+        plt.xlabel("Порядок точности ($\\epsilon = 10^{-порядок}}$)")
         plt.ylabel("Число итераций")
+        plt.xticks(powers[::2])
+        plt.yticks(range(0, max(fp[-1], z[-1]), 5))
         plt.grid(True)
         plt.show()
 
