@@ -99,6 +99,7 @@ def main(src, test=False, eps=0.01):
         plt.xlabel("Число итераций")
         plt.ylabel("Погрешность")
         plt.grid(True)
+        plt.yticks(np.arange(0, max(errors) + .05, .05))
         plt.savefig("benchmark.jpg", dpi=300)
         plt.show()
 
