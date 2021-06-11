@@ -77,10 +77,14 @@ def main(eps=0.01, test=False):
         "eps": eps
     }
 
+    print("eps =", init_dict["eps"])
+
     print("Функция f(x) =", init_dict["f"])
     print("Функция phi(x) =", init_dict["phi"])
-    print("\nРешение методом Ньютона:\t\t\t", newton_method(init_dict))
-    print("Решение методом простой итерации:\t", iteration_method(init_dict))
+    x, it = newton_method(init_dict, count_it=True)
+    print(f"\nРешение методом Ньютона:\t\t\t{x:.15f} за {it} ит.")
+    x, it = iteration_method(init_dict, count_it=True)
+    print(f"Решение методом простой итерации:\t{x:.15f} за {it} ит.")
 
     if test:
         powers = np.arange(0, 11, .5)  # порядки эпсилонов (eps = 10 ** -p)
