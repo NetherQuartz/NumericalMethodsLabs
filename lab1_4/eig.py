@@ -86,7 +86,7 @@ def main(src, test=False, eps=0.01):
     print("\nrotation_eig:", *rotation_eig(matrix, eps), sep="\n")
 
     if test:
-        powers = np.arange(0, 10, .1)  # порядки эпсилонов (eps = 10 ** -p)
+        powers = np.arange(0, 15, .1)  # порядки эпсилонов (eps = 10 ** -p)
         counts = []
         errors = []
         for p in powers:
@@ -97,9 +97,10 @@ def main(src, test=False, eps=0.01):
         plt.plot(counts, errors, "-*")
         plt.title("Зависимость погрешности вычислений от числа итераций")
         plt.xlabel("Число итераций")
-        plt.ylabel("Погрешность")
+        plt.ylabel("Погрешность (лог. шкала)")
         plt.grid(True)
         plt.yticks(np.arange(0, max(errors) + .05, .05))
+        plt.yscale("log")
         plt.savefig("benchmark.jpg", dpi=300)
         plt.show()
 
