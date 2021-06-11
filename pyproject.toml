@@ -12,6 +12,7 @@ matplotlib = "^3.3.4"
 fire = "^0.4.0"
 scipy = "^1.6.1"
 tqdm = "^4.59.0"
+sympy = "^1.8"
 
 [tool.poetry.dev-dependencies]
 
