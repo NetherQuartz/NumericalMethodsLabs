@@ -5,6 +5,8 @@ import fire  # CLI
 import matplotlib.pyplot as plt
 from sympy import sympify, diff, lambdify
 
+from utilities import str2fun
+
 
 def get_q(a, b, dphi):
     return max(abs(dphi(a)), abs(dphi(b)))
@@ -14,10 +16,7 @@ def iteration_method(init_dict, count_it=False):
     interval, eps = init_dict['interval'], init_dict['eps']
     a, b = interval[0], interval[1]
 
-    phi = sympify(init_dict["phi"])
-    dphi = diff(phi)
-    phi = lambdify("x", phi)
-    dphi = lambdify("x", dphi)
+    phi, dphi = str2fun(init_dict["phi"], der_num=1)
 
     x_prev = (b - a) / 2
     q = get_q(a, b, dphi)
@@ -44,10 +43,7 @@ def newton_method(init_dict, count_it=False):
     x_prev = b
     cnt_iter = 0
 
-    f = sympify(init_dict["f"])
-    df = diff(f, "x")
-    f = lambdify("x", f)
-    df = lambdify("x", df)
+    f, df = str2fun(init_dict["f"], der_num=1)
 
     while True:
         cnt_iter += 1
