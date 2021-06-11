@@ -3,7 +3,6 @@
 import numpy as np
 import fire  # CLI
 import matplotlib.pyplot as plt
-from sympy import sympify, diff, lambdify
 
 from utilities import str2fun
 
