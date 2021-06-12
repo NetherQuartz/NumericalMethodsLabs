@@ -4,71 +4,70 @@ import numpy as np
 import fire  # CLI
 import matplotlib.pyplot as plt
 
-from sympy import sympify, lambdify, diff
+from sympy import sympify, lambdify, diff, Expr
+from numpy.linalg import det
+
+from typing import Iterable, Callable
+
+from utilities import str2fun
 
 
-def get_q(x, phi1, phi2):
-    dphi1_dx1 = lambdify("x1,x2", diff(phi1, "x1"))
-    dphi1_dx2 = lambdify("x1,x2", diff(phi1, "x2"))
-    dphi2_dx1 = lambdify("x1,x2", diff(phi2, "x1"))
-    dphi2_dx2 = lambdify("x1,x2", diff(phi2, "x2"))
-
-    max_phi1 = abs(dphi1_dx1(*x)) + abs(dphi1_dx2(*x))
-    max_phi2 = abs(dphi2_dx1(*x)) + abs(dphi2_dx2(*x))
-
-    return max(max_phi1, max_phi2)
+def get_q(x, phi):
+    """Максимум модуля суммы по строке"""
+    return np.abs(jacobian(x, phi).sum(axis=1)).max()
 
 
-def A1(x, f1, f2):
-    df1_dx2 = lambdify("x1,x2", diff(f1, "x2"))
-    df2_dx2 = lambdify("x1,x2", diff(f2, "x2"))
-    f1 = lambdify("x1,x2", f1)
-    f2 = lambdify("x1,x2", f2)
+def get_a(x: np.ndarray, jacobi: np.ndarray, f: Iterable[Callable]) -> np.ndarray:
+    """Возвращает тензор ixjxi, состоящий из i якобианов, в каждом из которых столбец i заменён на столбец из f_j(x)"""
 
-    return np.array([[f1(*x), df1_dx2(*x)],
-                     [f2(*x), df2_dx2(*x)]])
-
-
-def A2(x, f1, f2):
-    df1_dx1 = lambdify("x1,x2", diff(f1, "x1"))
-    df2_dx1 = lambdify("x1,x2", diff(f2, "x1"))
-    f1 = lambdify("x1,x2", f1)
-    f2 = lambdify("x1,x2", f2)
-
-    return np.array([[df1_dx1(*x), f1(*x)],
-                     [df2_dx1(*x), f2(*x)]])
+    f_col = np.array([f_i(*x) for f_i in f])
+    a = np.stack([jacobi] * jacobi.shape[1])
+    for i in range(a.shape[0]):
+        a[i, :, i] = f_col
+    return a
 
 
-def jacobian(x, f1, f2):
-    df1_dx1 = lambdify("x1,x2", diff(f1, "x1"))
-    df2_dx1 = lambdify("x1,x2", diff(f2, "x1"))
-    df1_dx2 = lambdify("x1,x2", diff(f1, "x2"))
-    df2_dx2 = lambdify("x1,x2", diff(f2, "x2"))
+def jacobian(x: np.ndarray, f: Iterable[Expr]) -> np.ndarray:
+    """Матрица Якоби для списка функций f, вычисленная в точке x"""
 
-    return np.array([[df1_dx1(*x), df1_dx2(*x)],
-                     [df2_dx1(*x), df2_dx2(*x)]])
+    # получаем список переменных
+    var_str = get_variables(f)
+    var_list = var_str.split(",")
+
+    # матрица ixj производных df_j/dx_i
+    partials = [[lambdify(var_str, diff(fun, var)) for var in var_list] for fun in f]
+
+    # вычисляем производные в точке и возвращаем
+    return np.array([[fun(*x) for fun in row] for row in partials])
+
+
+def get_variables(functions: Iterable[Expr]) -> str:
+    """Возвращает строку вида "x1,x2,…", содержащую все переменные из функций в списке functions"""
+
+    var_sets = [fun.free_symbols for fun in functions]
+    var_set = set()
+    for vs in var_sets:
+        var_set |= vs
+
+    var_list = sorted(map(str, var_set))
+    return ",".join(var_list)
 
 
 def iteration_method(init_dict, count_it=False):
-    interval, eps = init_dict['interval'], init_dict['eps']
+    intervals, eps = init_dict['intervals'], init_dict['eps']
 
-    inter_x1, inter_x2 = interval[0], interval[1]
+    phi = [sympify(fun) for fun in init_dict["phi"]]
+    var_str = get_variables(phi)
 
-    phi1 = sympify(init_dict["phi1"])
-    phi2 = sympify(init_dict["phi2"])
+    x_prev = np.array([inter[1] - inter[0] for inter in intervals]) / 2
+    q = get_q(x_prev, phi)
 
-    x_prev = np.array([inter_x1[1] - inter_x1[0],
-                       inter_x2[1] - inter_x2[0]]) / 2
-
-    q = get_q(x_prev, phi1, phi2)
-
-    phi1 = lambdify("x1,x2", phi1)
-    phi2 = lambdify("x1,x2", phi2)
+    phi = [lambdify(var_str, fun) for fun in phi]
 
     c = 0
     while True:
         c += 1
-        x = [phi1(*x_prev), phi2(*x_prev)]
+        x = np.array([fun(*x_prev) for fun in phi])
 
         finish_iter = max([abs(i - j) for i, j in zip(x, x_prev)]) * q / (1 - q)
         if finish_iter <= eps:
@@ -80,21 +79,23 @@ def iteration_method(init_dict, count_it=False):
 
 
 def newton_method(init_dict, count_it=False):
-    interval, eps = init_dict['interval'], init_dict['eps']
+    intervals, eps = init_dict['intervals'], init_dict['eps']
 
-    inter_x1, inter_x2 = interval
+    f_expr = [sympify(fun) for fun in init_dict["f"]]
+    var_str = get_variables(f_expr)
 
-    x_prev = np.array([inter_x1[1] - inter_x1[0], inter_x2[1] - inter_x2[0]]) / 2
+    x_prev = np.array([inter[1] - inter[0] for inter in intervals]) / 2
 
-    f1 = sympify(init_dict["f1"])
-    f2 = sympify(init_dict["f2"])
+    f_call = [lambdify(var_str, fun) for fun in f_expr]
 
     c = 0
     while True:
         c += 1
 
-        x = np.array([x_prev[0] - np.linalg.det(A1(x_prev, f1, f2)) / np.linalg.det(jacobian(x_prev, f1, f2)),
-                      x_prev[1] - np.linalg.det(A2(x_prev, f1, f2)) / np.linalg.det(jacobian(x_prev, f1, f2))])
+        jacobi = jacobian(x_prev, f_expr)
+        a = get_a(x_prev, jacobi, f_call)
+
+        x = x_prev - np.array([det(a[i]) / det(jacobi) for i in range(a.shape[0])])
 
         finish_iter = max([abs(i - j) for i, j in zip(x, x_prev)])
         if finish_iter <= eps:
@@ -105,32 +106,56 @@ def newton_method(init_dict, count_it=False):
     return x if not count_it else (x, c)
 
 
-def main(eps=0.01, test=False):
-    """Решение нелинейного уравнения методами простой итерации и Ньютона
+def main(eps=0.01, plot=False, test=False):
+    """Решение системы нелинейных уравнений методами простой итерации и Ньютона
 
     :param eps: точность вычисления
+    :param plot: флаг, отвечающий за вывод графика решения
     :param test: флаг, запускающий тестирование
     """
 
     init_dict = {
-        "f1": "x1 - cos(x2) - 1",
-        "f2": "x2 - log(x1 + 1, 10) - 3",
-        "phi1": "cos(x2) + 1",
-        "phi2": "log(x1 + 1, 10) + 3",
-        "interval": [(-0.5, 0.5), (2.5, 3.5)],
+        "f": ["x1 - cos(x2) - 1", "x2 - log(x1 + 1, 10) - 3"],
+        "phi": ["cos(x2) + 1", "log(x1 + 1, 10) + 3"],
+        "intervals": [(-0.5, 0.5), (2.5, 3.5)],
         "eps": eps
     }
 
-    print("eps =", init_dict["eps"])
+    print("eps =", init_dict["eps"], end="\n\n")
 
-    print("Функция f1(x) =", init_dict["f1"])
-    print("Функция f2(x) =", init_dict["f2"])
-    print("Функция phi1(x) =", init_dict["phi1"])
-    print("Функция phi2(x) =", init_dict["phi2"])
-    x, it = newton_method(init_dict, count_it=True)
-    print(f"\nРешение методом Ньютона:\t\t\t{x} за {it} ит.")
-    x, it = iteration_method(init_dict, count_it=True)
-    print(f"Решение методом простой итерации:\t{x} за {it} ит.")
+    # вывод всех функций f(x) и phi(x)
+    print("Функции f(x):", *[f"\tf{i+1}(x) = {e}" for i, e in enumerate(init_dict["f"])], sep="\n", end="\n\n")
+    print("Функции phi(x):", *[f"\tphi{i+1}(x) = {e}" for i, e in enumerate(init_dict["phi"])], sep="\n")
+
+    # получение и вывод решений
+    ans, it = newton_method(init_dict, count_it=True)
+    print(f"\nРешение методом Ньютона:\t\t\t{ans} за {it} ит.")
+    ans, it = iteration_method(init_dict, count_it=True)
+    print(f"Решение методом простой итерации:\t{ans} за {it} ит.")
+
+    if plot:
+        y = np.arange(-10, 10, .001)
+        phi1 = str2fun(init_dict["phi"][0])
+        x = phi1(y)
+        plt.plot(x, y, label=f"f1(x) = {init_dict['f'][0]}")
+
+        x = np.arange(-0.999, 10, .001)
+        phi2 = str2fun(init_dict["phi"][1])
+        y = phi2(x)
+        plt.plot(x, y, label=f"f2(x) = {init_dict['f'][1]}")
+
+        plt.plot(*ans, "ro", label="Решение системы")
+
+        plt.legend()
+        plt.axis("equal")
+        plt.grid(True)
+        plt.xlim(init_dict["intervals"][0][0] - 2, init_dict["intervals"][0][1] + 2)
+        plt.ylim(init_dict["intervals"][1][0] - 2, init_dict["intervals"][1][1] + 2)
+        plt.xlabel("x1")
+        plt.ylabel("x2")
+
+        plt.savefig("plot.jpg", dpi=300)
+        plt.show()
 
     if test:
         powers = np.arange(0, 11, .5)  # порядки эпсилонов (eps = 10 ** -p)
