@@ -3,6 +3,39 @@ import fire
 from utilities import parse_matrix
 
 
+def tdma_solve(matrix: np.ndarray, rhs: np.ndarray) -> np.ndarray:
+    """Решение СЛАУ с трёхдиагональной матрицей методом прогонки
+
+    :param matrix: матрица коэффициентов
+    :param rhs: вектор правых частей
+    :return: решение СЛАУ
+    """
+
+    b = np.diagonal(matrix)
+
+    a = np.diagonal(matrix, offset=-1)
+    a = np.hstack([0, a])
+
+    c = np.diagonal(matrix, offset=1)
+    c = np.hstack([c, 0])
+
+    n = matrix.shape[0]  # размерность матрицы
+
+    p = [-c[0] / b[0]]
+    q = [rhs[0] / b[0]]
+    for i in range(1, n):
+        denominator = b[i] + a[i] * p[i - 1]
+        p.append(-c[i] / denominator)
+        q.append((rhs[i] - a[i] * q[i - 1]) / denominator)
+
+    x = np.zeros(n)
+    x[-1] = q[-1]
+    for i in range(n - 2, -1, -1):
+        x[i] = p[i] * x[i + 1] + q[i]
+
+    return x
+
+
 def main(src, test=False):
     """Решение СЛАУ с трёхдиагональной матрицей методом прогонки
 
@@ -19,27 +52,7 @@ def main(src, test=False):
     m = matrix[:, :-1]
     d = matrix[:, -1]
 
-    b = np.diagonal(m)
-
-    a = np.diagonal(m, offset=-1)
-    a = np.hstack([0, a])
-
-    c = np.diagonal(m, offset=1)
-    c = np.hstack([c, 0])
-
-    n = m.shape[0]  # размерность матрицы
-
-    p = [-c[0] / b[0]]
-    q = [d[0] / b[0]]
-    for i in range(1, n):
-        denominator = b[i] + a[i] * p[i - 1]
-        p.append(-c[i] / denominator)
-        q.append((d[i] - a[i] * q[i - 1]) / denominator)
-
-    x = np.zeros(n)
-    x[-1] = q[-1]
-    for i in range(n - 2, -1, -1):
-        x[i] = p[i] * x[i + 1] + q[i]
+    x = tdma_solve(m, d)
 
     print(f"Решение СЛАУ: {x}")
 
