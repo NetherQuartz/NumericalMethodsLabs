@@ -61,8 +61,8 @@ def str2fun(f: str, der_num=0) -> Callable or List[Callable]:
 
     sympified = sympify(f)
 
-    if len(sympified.free_symbols) > 1:
-        raise ValueError("Функция должна содержать только один параметр")
+    if len(sympified.free_symbols) > 1 and der_num > 0:
+        raise ValueError("Для взятия производной функция должна содержать только один параметр")
 
     if der_num > 0:
         derivatives = diff_n_times(sympified, der_num)
