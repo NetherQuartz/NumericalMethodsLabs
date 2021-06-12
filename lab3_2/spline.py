@@ -1,3 +1,5 @@
+"""ЛР 3.2, Ларькин Владимир, М8О-303Б-18"""
+
 import numpy as np
 import fire  # CLI
 import matplotlib.pyplot as plt
