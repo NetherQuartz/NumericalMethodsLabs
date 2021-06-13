@@ -51,12 +51,13 @@ def diff_n_times(f: Expr, n: int) -> List[Expr]:
     return derivatives
 
 
-def str2fun(f: str, der_num=0) -> Callable or List[Callable]:
+def str2fun(f: str, der_num=0, variables=None) -> Callable or List[Callable]:
     """Принимает на вход строку, представляющую собой выражение и возвращает её в виде функции или списка её производных
 
-    :param f:
-    :param der_num:
-    :return:
+    :param f: строка — выражение, которое нужно преобразовать в функцию
+    :param der_num: количество производных, если они нужны
+    :param variables: строка вида "x1,x2,…", содержащая переменные — параметры выходной функции
+    :return: функция или список из функции и её der_num производных
     """
 
     sympified = sympify(f)
@@ -64,8 +65,12 @@ def str2fun(f: str, der_num=0) -> Callable or List[Callable]:
     if len(sympified.free_symbols) > 1 and der_num > 0:
         raise ValueError("Для взятия производной функция должна содержать только один параметр")
 
+    if variables is not None and der_num > 0 and variables != ",".join(map(str, sympified.free_symbols)):
+        raise Exception("Взятие производной возможно только в функциях с одной переменной")
+
     if der_num > 0:
         derivatives = diff_n_times(sympified, der_num)
         return [lambdify(",".join(map(str, der.free_symbols)), der) for der in derivatives]
     else:
-        return lambdify(",".join(map(str, sympified.free_symbols)), sympified)
+        variables = variables if variables is not None else ",".join(map(str, sympified.free_symbols))
+        return lambdify(variables, sympified)
