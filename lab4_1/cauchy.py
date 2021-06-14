@@ -4,10 +4,7 @@ import fire  # CLI
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pprint import pprint
-
 from utilities import str2fun
-from lab3_4.derivative import first_derivative, second_derivative
 
 
 def analytical_solution(f, a, b, h):
@@ -183,6 +180,14 @@ def main():
             print(f"\t{key}:\t{errors[key]:.10f}")
 
     draw_plot(save_res, exact, h_list[0], h_list[1])
+
+    print("\nРешения:")
+    for res in save_res:
+        print("h = {0:4.2f}:".format(res["h"]))
+        for key in [*res.keys()][1:]:
+            print(f"\t{key}:")
+            print("\t\tx:", *[f"{val:.2f}" for val in res[key]["x"]])
+            print("\t\ty:", *[f"{val:.2f}" for val in res[key]["y"]])
 
 
 if __name__ == "__main__":
