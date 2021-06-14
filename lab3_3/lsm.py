@@ -70,6 +70,12 @@ def main():
     print("\tn = 1:", e1)
     print("\tn = 2:", e2)
 
+    print("\nАппроксимирующие функции:")
+
+    xs = ["", "x", "x^2"]
+    for c, n in zip([c1, c2], [1, 2]):
+        print(f"\tn = {n}:", " + ".join([f"{v:.6f}{x}" for v, x in zip(c, xs)]))
+
 
 if __name__ == "__main__":
     fire.Fire(main)
