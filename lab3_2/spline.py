@@ -101,6 +101,10 @@ def main():
 
     print(f"f(x* = {init_dict['x*']}) = {val}")
 
+    print("\nКоэффициенты:")
+    for title, values in zip(["a", "b", "c", "d"], [a, b, c, d]):
+        print(f"{title}:", *[f"{el:10.5f}" for el in values])
+
 
 if __name__ == "__main__":
     fire.Fire(main)
