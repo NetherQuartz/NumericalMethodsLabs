@@ -125,11 +125,6 @@ def draw_plot(res, exact, *h):
     plt.show()
 
 
-def check(x, y):
-    x0, y0 = x[-3], y[-3]
-    print(second_derivative(x, y, x0) - 4 * x0 * first_derivative(x, y, x0) + (4 * x0 ** 2 - 2) * y0)
-
-
 def main():
     """Решение задачи Коши мктодами Эйлера, Рунге-Кутты и Адамса 4-го порядка"""
 
@@ -149,13 +144,13 @@ def main():
     #     "h": 0.1,
     #     "y0": 2,
     #     "y_der0": 1,
-    #     "equation": "12 * y / (x**2) + y_der * 10 ^ -20",
+    #     "equation": "12 * y / (x**2)",
     #     "solution": "x^4+x^(-3)"
     # }
 
     a, b = init_dict["a"], init_dict["b"]
     h_list = [init_dict["h"], init_dict["h"] / 2]
-    equation = str2fun(init_dict["equation"])
+    equation = str2fun(init_dict["equation"], variables="x,y,y_der")
     y0, y_der0 = init_dict["y0"], init_dict["y_der0"]
     solution = str2fun(init_dict["solution"])
     save_res = []
@@ -174,11 +169,18 @@ def main():
             "Adams": {'x': adams_x, 'y': adams_y}
         })
 
-    errors = runge_romberg_method(save_res)
-    errors2 = exact_error(save_res, exact)
+    errors_rr = runge_romberg_method(save_res)
+    errors_abs = exact_error(save_res, exact)
 
-    pprint(errors)
-    pprint(errors2)
+    for errors in [errors_rr, errors_abs]:
+        for key in errors.keys():
+            errors[key] = np.average(errors[key])
+
+    for title, errors in zip(["Средняя погрешность по Рунге-Ромбергу", "Средняя абсолютная погрешность"],
+                      [errors_rr, errors_abs]):
+        print(f"{title}:")
+        for key in errors.keys():
+            print(f"\t{key}:\t{errors[key]:.10f}")
 
     draw_plot(save_res, exact, h_list[0], h_list[1])
 
