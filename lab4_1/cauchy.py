@@ -33,7 +33,7 @@ def euler_method(f, g, a, b, h, y0, y_der):
 
 
 def runge_kutta_method(f, g, a, b, h, y0, y_der):
-    n = int((b - a) / h)
+    n = int(np.ceil((b - a) / h))
     x = [i for i in np.arange(a, b + h, h)]
     y = [y0]
     z = [y_der]
