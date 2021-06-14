@@ -70,7 +70,7 @@ def str2fun(f: str, der_num=0, variables=None) -> Callable or List[Callable]:
 
     if der_num > 0:
         derivatives = diff_n_times(sympified, der_num)
-        return [lambdify(",".join(map(str, der.free_symbols)), der) for der in derivatives]
+        return [lambdify(",".join(sorted(map(str, der.free_symbols))), der) for der in derivatives]
     else:
-        variables = variables if variables is not None else ",".join(map(str, sympified.free_symbols))
+        variables = variables if variables is not None else ",".join(sorted(map(str, sympified.free_symbols)))
         return lambdify(variables, sympified)
