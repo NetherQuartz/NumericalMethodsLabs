@@ -4,11 +4,8 @@ import fire  # CLI
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pprint import pprint
-
 from utilities import str2fun
 from lab1_2.tdma import tdma_solve
-from lab3_4.derivative import first_derivative, second_derivative
 from lab4_1.cauchy import runge_kutta_method
 
 
@@ -38,20 +35,19 @@ def check_finish(x, y, b, delta, gamma, y1, eps):
     return abs(delta * y[-1] + gamma * y_der - y1) > eps
 
 
-# def phi(b, y0, eta):
-
-
-
 def shooting_method(f, g, a, b, alpha, beta, delta, gamma, y0, y1, h, eps):
     n_prev, n = 1.0, 0.8
-    ans_prev = runge_kutta_method(f, g, a, b, h, n_prev, 0)[:2]
+    y_der = (y0 - alpha * n_prev) / beta if beta != 0 else 0
+    ans_prev = runge_kutta_method(f, g, a, b, h, n_prev, y_der)[:2]
 
-    ans = runge_kutta_method(f, g, a, b, h, n, 0)[:2]
+    y_der = (y0 - alpha * n) / beta if beta != 0 else 0
+    ans = runge_kutta_method(f, g, a, b, h, n, y_der)[:2]
 
     while check_finish(ans[0], ans[1], b, delta, gamma, y1, eps):
         n, n_prev = get_n(n_prev, n, ans_prev, ans, b, delta, gamma, y1), n
         ans_prev = ans
-        ans = runge_kutta_method(f, g, a, b, h, n, -1)[:2]
+        y_der = (y0 - alpha * n) / beta if beta != 0 else -1
+        ans = runge_kutta_method(f, g, a, b, h, n, y_der)[:2]
 
     return ans
 
@@ -113,6 +109,7 @@ def draw_plot(res, exact, *h):
         plt.xlabel('x')
         plt.ylabel('y')
         plt.grid(True)
+    plt.savefig("plot.jpg", dpi=300)
     plt.show()
 
 
