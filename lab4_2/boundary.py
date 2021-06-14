@@ -25,38 +25,39 @@ def first_der(x, y, x0):
 
 def get_n(n_prev, n, ans_prev, ans, b, delta, gamma, y1):
     x, y = ans_prev[0], ans_prev[1]
-    y_der = first_der(x, y, b)
+    y_der = first_der(x, y, b) if gamma != 0 else 0
     phi_n_prev = delta * y[-1] + gamma * y_der - y1
     x, y = ans[0], ans[1]
-    y_der = first_der(x, y, b)
+    y_der = first_der(x, y, b) if gamma != 0 else 0
     phi_n = delta * y[-1] + gamma * y_der - y1
     return n - (n - n_prev) / (phi_n - phi_n_prev) * phi_n
 
 
 def check_finish(x, y, b, delta, gamma, y1, eps):
-    y_der = first_der(x, y, b)
+    y_der = first_der(x, y, b) if gamma != 0 else 0
     return abs(delta * y[-1] + gamma * y_der - y1) > eps
+
+
+# def phi(b, y0, eta):
+
 
 
 def shooting_method(f, g, a, b, alpha, beta, delta, gamma, y0, y1, h, eps):
     n_prev, n = 1.0, 0.8
-    y_der = (y0 - alpha * n_prev) / (beta + eps)
-    ans_prev = runge_kutta_method(f, g, a, b, h, n_prev, y_der)[:2]
+    ans_prev = runge_kutta_method(f, g, a, b, h, n_prev, 0)[:2]
 
-    y_der = (y0 - alpha * n) / (beta + eps)
-    ans = runge_kutta_method(f, g, a, b, h, n, y_der)[:2]
+    ans = runge_kutta_method(f, g, a, b, h, n, 0)[:2]
 
     while check_finish(ans[0], ans[1], b, delta, gamma, y1, eps):
         n, n_prev = get_n(n_prev, n, ans_prev, ans, b, delta, gamma, y1), n
         ans_prev = ans
-        y_der = (y0 - alpha * n) / beta
-        ans = runge_kutta_method(f, g, a, b, h, n, y_der)[:2]
+        ans = runge_kutta_method(f, g, a, b, h, n, -1)[:2]
 
     return ans
 
 
 def finite_difference_method(f, p, q, a, b, alpha, beta, delta, gamma, y0, y1, h):
-    n = int((b - a) / h)
+    n = int(np.ceil((b - a) / h))
     x = np.array([i for i in np.arange(a, b + h, h)])
     a = [0] + [1 - p(x[i]) * h / 2 for i in range(0, n - 1)] + [-gamma]
     b = [alpha * h - beta] + [q(x[i]) * h ** 2 - 2 for i in range(0, n - 1)] + [delta * h + gamma]
@@ -183,8 +184,18 @@ def main():
         y_exact = [exact_func(i) for i in x_exact]
         exact.append((x_exact, y_exact))
 
-    # errors = Runge_Romberg_method(save_res)
-    # errors2 = exact_error(save_res, exact)
+    errors_rr = runge_romberg_method(save_res)
+    errors_abs = exact_error(save_res, exact)
+
+    for errors in [errors_rr, errors_abs]:
+        for key in errors.keys():
+            errors[key] = np.average(errors[key])
+
+    for title, errors in zip(["Средняя погрешность по Рунге-Ромбергу", "Средняя абсолютная погрешность"],
+                      [errors_rr, errors_abs]):
+        print(f"{title}:")
+        for key in errors.keys():
+            print(f"\t{key+':':8s}\t{errors[key]:.10f}")
 
     draw_plot(save_res, exact, st, st / 2)
 
