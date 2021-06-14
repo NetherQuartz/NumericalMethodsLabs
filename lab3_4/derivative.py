@@ -3,31 +3,63 @@
 import fire  # CLI
 
 
-def find_interval(points, x):
-    """Номер отрезка, в котором лежит точка x"""
+def der_several_brackets(x, X):
+    n = len(X)
+    if n == 1:
+        return 1
+    return brackets_mult(x, X[1:]) + brackets_mult(x, X[:1]) * der_several_brackets(x, X[1:])
 
-    for i in range(0, len(points) - 1):
-        if points[i] <= x <= points[i + 1]:
-            return i
+
+def divdiff(X, Y):
+    n = len(X)
+    if n < 2:
+        if n == 1:
+            return Y[0]
+        return None
+    if n > 2:
+        return (divdiff(X[1:], Y[1:]) - divdiff(X[:n-1], Y[:n-1])) / (X[n-1] - X[0])
+    return (Y[1] - Y[0]) / (X[1] - X[0])
 
 
-def first_derivative(x, y, x0):
+def brackets_mult(x, X):
+    ans = 1
+    for i in range(len(X)):
+        ans *= (x - X[i])
+    return ans
+
+
+def brackets_mult1(x, X):
+    ans = 0
+    for i in range(len(X)):
+        ans += brackets_mult(x, X[:i] + X[i+1:])
+    return ans
+
+
+def first_derivative(X, Y, x):
     """Первая производная таблично-заданной функции y(x)"""
 
-    i = find_interval(x, x0)
-    addend1 = (y[i + 1] - y[i]) / (x[i + 1] - x[i])
-    addend2 = ((y[i + 2] - y[i + 1]) / (x[i + 2] - x[i + 1]) - addend1) / \
-              (x[i + 2] - x[i]) * (2 * x0 - x[i] - x[i + 1])
-    return addend1 + addend2
+    n = len(X)
+    ans = 0
+    for i in range(1, n):
+        ans += divdiff(X[:i+1], Y[:i+1]) * brackets_mult1(x, X[:i])
+    return ans
 
 
-def second_derivative(x, y, x0):
+def brackets_mult2(x, X):
+    ans = 0
+    for i in range(len(X)):
+        ans += der_several_brackets(x, X[:i] + X[i+1:])
+    return ans
+
+
+def second_derivative(X, Y, x):
     """Вторая производная таблично-заданной функции y(x)"""
 
-    i = find_interval(x, x0)
-    num1 = (y[i + 2] - y[i + 1]) / (x[i + 2] - x[i + 1])
-    num2 = (y[i + 1] - y[i]) / (x[i + 1] - x[i])
-    return 2 * (num1 - num2) / (x[i + 2] - x[i])
+    n = len(X)
+    ans = 0
+    for i in range(2, n):
+        ans += divdiff(X[:i+1], Y[:i+1]) * brackets_mult2(x, X[:i])
+    return ans
 
 
 def main():
