@@ -196,6 +196,14 @@ def main():
 
     draw_plot(save_res, exact, st, st / 2)
 
+    print("\nРешения:")
+    for res in save_res:
+        print("h = {0:4.2f}:".format(res["h"]))
+        for key in [*res.keys()][1:]:
+            print(f"\t{key}:")
+            print("\t\tx:", *[f"{val:5.2f}" for val in res[key]["x"]])
+            print("\t\ty:", *[f"{val:5.2f}" for val in res[key]["y"]])
+
 
 if __name__ == "__main__":
     fire.Fire(main)
