@@ -2,14 +2,16 @@
 
 import time
 import numpy as np
-import scipy.linalg
 import fire  # CLI
-from tqdm import tqdm  # прогресс-бары
-from functools import partial
-
 import multiprocessing as mp
 
+from typing import List
+from tqdm import tqdm  # прогресс-бары
+
+import matplotlib.pyplot as plt
+
 from utilities import parse_matrix  # парсинг матрицы из файла
+from lab1_1.gauss import lu_solve
 
 
 def lu_decomposition(matrix: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarray):
@@ -45,10 +47,23 @@ def lu_decomposition(matrix: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarray)
         for i in range(j + 1, n):
             for k in range(u.shape[1]):
                 u[i, k] -= u[j, k] * l[i, j]
-            # u[i, :] -= u[j, :] * l[i, j]
 
     l[np.diag_indices(n)] = 1
     return p, l, u
+
+
+def split(a: np.ndarray, num: int) -> List[np.ndarray]:
+    """Разделяет NumPy массив a на num - 1 равных частей + 1 часть из того, что осталось"""
+
+    if num > len(a):
+        return np.split(a, len(a))
+
+    bound = len(a) // num * num
+    res = np.split(a[:bound], num)
+    rem = len(a) - len(a) // num * num
+    if rem > 0:
+        res[-1] = np.concatenate([res[-1], a[-rem:]])
+    return res
 
 
 def divide(data):
@@ -71,8 +86,8 @@ def lu_decomposition_parallel(matrix: np.ndarray) -> (np.ndarray, np.ndarray, np
     :return: кортеж из матриц P, L, U
     """
 
-    # матрицы обязаны быть квадратными массивами размерности 2
-    assert matrix.shape[0] == matrix.shape[1] and len(matrix.shape) == 2
+    if matrix.shape[0] != matrix.shape[1] or len(matrix.shape) != 2:
+        raise ValueError("Матрицы обязаны быть квадратными массивами размерности 2")
 
     n = matrix.shape[0]
 
@@ -90,121 +105,35 @@ def lu_decomposition_parallel(matrix: np.ndarray) -> (np.ndarray, np.ndarray, np
         l[[j, m]] = l[[m, j]]
         u[[j, m]] = u[[m, j]]
 
-        b = u[j + 1:, j]
-        bound = len(b) // proc_count * proc_count
-        u_split = np.split(b[:bound], proc_count)
-        rem = len(b) - len(b) // proc_count * proc_count
-        if rem > 0:
-            u_split[-1] = np.hstack([u_split[-1], b[-rem:]])
-
-        c = [u[j, j]] * len(u_split)
-
-        data_in = zip(u_split, c)
-
+        # аналогично l[j + 1:, j] = u[j + 1:, j] / u[j, j], но параллельно
+        b = split(u[j + 1:, j], proc_count)
+        c = [u[j, j]] * len(b)
+        data_in = zip(b, c)
         data_out = pool.map(divide, data_in)
-
         l[j + 1:, j] = np.hstack(data_out)
 
-        # ^аналогично: l[j + 1:, j] = u[j + 1:, j] / u[j, j]
+        # for i in range(j + 1, n):
+        #     u[i, :] -= u[j, :] * l[i, j]
 
+        # for i in range(j + 1, n):
+        #     for k in range(n):
+        #         u[i, k] -= u[j, k] * l[i, j]
+
+        # аналогично^, но одним умножением
+        # так оказалось быстрее, чем inplace
         u[j + 1:, :] = u[j + 1:, :] - l[j + 1:, j].reshape(-1, 1) @ u[j, :].reshape(1, -1)
 
-        # for i in range(j + 1, n):  # аналогично, но одним умножением^
-        #     u[i, :] -= u[j, :] * l[i, j]
+        # попытка распараллелить вот это^, но результат хуже, чем у простого цикла
+        # a = split(u[j + 1:, :], proc_count)
+        # b = split(l[j + 1:, j], proc_count)
+        # c = [u[j, :]] * len(a)
+        # data_in = zip(a, b, c)
+        # data_out = pool.map(subtract, data_in)
+        # u[j + 1:, :] = np.vstack(data_out)
 
     l[np.diag_indices(n)] = 1
     pool.close()
     return p, l, u
-
-
-def perm_parity(p: np.ndarray) -> int:
-    """Вычисление чётности перестановки, заданной матрицей перестановки.
-
-    :param p: матрица перестановки
-    :return: 1, если перестановка чётная, и -1, если нечётная
-    """
-
-    # матрица обязана быть квадратным массивом размерности 2
-    assert p.shape[0] == p.shape[1] and len(p.shape) == 2
-
-    n = p.shape[0]  # размерность матрицы
-    v = p @ np.arange(n)  # получаем массив индексов перестановки
-
-    # ищем все инверсии в массиве, их число такой же чётности, что и перестановка
-    parity = 1
-    for i in range(n - 1):
-        for j in range(i + 1, n):
-            if v[i] > v[j]:
-                parity *= -1
-
-    return parity
-
-
-def lu_det(u: np.ndarray, p: np.ndarray = None, drop_sign: bool = False) -> float:
-    """Вычисление определителя матрицы по её LU-разложению
-
-    :param u: верхняя треугольная матрица LU-разложения
-    :param p: матрица перестановок
-    :param drop_sign: если True, не гарантируется правильность знака определителя
-    :return: определитель
-    """
-
-    d = np.product(np.diag(u))
-    if not drop_sign:
-        d *= perm_parity(p)
-
-    return d
-
-
-def lu_solve(l: np.ndarray, u: np.ndarray, b: np.ndarray) -> np.ndarray:
-    """Решение СЛАУ, прошедшей через LU-разложение.
-    Требуется предварительно умножить вектор правых частей на матрицу перестановки.
-
-    :param l: нижняя треугольная матрица
-    :param u: верхняя треугольная матрица
-    :param b: вектор правых частей СЛАУ
-    :return: вектор-решение СЛАУ
-    """
-
-    n = l.shape[0]
-    z = np.zeros_like(b)
-    z[0] = b[0]
-    for i in range(1, n):
-        s = 0
-        for j in range(i):
-            s += l[i, j] * z[j]
-        z[i] = b[i] - s
-
-    x = np.zeros_like(b)
-    x[-1] = z[-1] / u[-1, -1]
-    for i in range(n - 2, -1, -1):
-        s = 0
-        for j in range(i + 1, n):
-            s += u[i, j] * x[j]
-        x[i] = (z[i] - s) / u[i, i]
-
-    return x
-
-
-def lu_inv(p: np.ndarray, l: np.ndarray, u: np.ndarray) -> np.ndarray:
-    """Обращение матрицы с помощью LU-разложения
-
-    :param p: матрица перестановок
-    :param l: нижняя треугольная матрица
-    :param u: верхняя треугольная матрица
-    :return: обратная матрица
-    """
-
-    # матрица обязана быть невырожденной
-    assert lu_det(u, p) != 0
-
-    n = u.shape[0]
-    inv = p @ np.identity(n)  # оптимизация памяти путём перезаписи столбцов единичной матрицы
-
-    # решаем СЛАУ LUX=PE
-    for j in range(n):
-        inv[:, j] = lu_solve(l, u, inv[:, j])
-    return inv
 
 
 def main(src=None, test=False, shape=50, it=500):
@@ -228,10 +157,8 @@ def main(src=None, test=False, shape=50, it=500):
         a = matrix[:, :-1]
         b = matrix[:, -1]
 
-        # a = np.random.rand(4, 4) * 1000
-
         print("A:", a, sep="\n")
-        # print("b:", b)
+        print("b:", b)
 
         p, l, u = lu_decomposition_parallel(a)
 
@@ -242,7 +169,6 @@ def main(src=None, test=False, shape=50, it=500):
 
         x = lu_solve(l, u, p @ b)
         print(f"Решение системы: {x}")
-        print(np.linalg.solve(a, b))
 
     # тесты на случайно сгенерированных матрицах
     if test:
@@ -255,108 +181,67 @@ def run_test(shape: int, it: int):
     :param shape: размер матриц
     :param it: количество тестов
     """
-    print(f"\nТест времени работы LU-разложения матриц {shape}x{shape}, {it} итераций:")
-
-    times_my = []
-    times_par = []
-    for _ in tqdm(range(it)):
-
-        a = np.random.rand(shape, shape) * 100
-
-        prev = time.time_ns()
-
-        p, l, u = lu_decomposition(a)
-
-        times_my.append(time.time_ns() - prev)
-
-        if not np.allclose(p.T @ l @ u, a):
-            print("Обычная")
-            print(a)
-            print(l)
-            print(u)
-            break
-
-        prev = time.time_ns()
-
-        p, lp, u = lu_decomposition_parallel(a)
-
-        times_par.append(time.time_ns() - prev)
-
-        if not np.allclose(p.T @ lp @ u, a):
-        # if not np.allclose(l, lp):
-            print("Параллельная")
-            print("L:\n", l)
-            print("Lp:\n", lp)
-            print("A:\n", a)
-            break
-
-    print(f"\nВремя lu_decomposition:\t\t\t\t{np.average(times_my) * 1e-9:.10f} секунд")
-    print(f"Время lu_decomposition_parallel:\t{np.average(times_par) * 1e-9:.10f} секунд")
-    print(f"~ {np.average(times_my) / np.average(times_par)} раз")
-
-    return
 
     print("\nТест решения СЛАУ:")
-    times_my = []
-    times_np = []
-    for i in tqdm(range(it)):
-        a = np.random.rand(shape, shape) * 100
-        p, l, u = lu_decomposition(a)
-        b = np.random.rand(shape) * 100
-        pb = p @ b
+    times_my = {}
+    times_par = {}
 
-        prev = time.time_ns()
+    shapes = list(range(10, shape, 10))
 
-        x = lu_solve(l, u, pb)
+    for shape in tqdm(shapes):
+        times_my[shape] = []
+        times_par[shape] = []
+        for _ in tqdm(range(it)):
 
-        times_my.append(time.time_ns() - prev)
+            a = np.random.rand(shape, shape) * 100
+            b = np.random.rand(shape) * 100
 
-        prev = time.time_ns()
+            prev = time.time_ns()
 
-        z = np.linalg.solve(l, pb)
-        xn = np.linalg.solve(u, z)
+            p, l, u = lu_decomposition(a)
 
-        times_np.append(time.time_ns() - prev)
+            _ = lu_solve(l, u, p @ b)
 
-        if not np.allclose(x, xn):
-            times_my.pop(-1)
-            times_np.pop(-1)
-            print(a)
-            print(b)
-            break
+            times_my[shape].append((time.time_ns() - prev) / 1e9)
 
-    print(f"\nПройдено тестов {i + 1}/{it}")
-    print(f"Время lu_solve: \t\t\t{np.average(times_my) * 1e-9:.10f} секунд")
-    print(f"Время numpy.linalg.solve: \t{np.average(times_np) * 1e-9:.10f} секунд")
+            if not np.allclose(p.T @ l @ u, a):
+                print("Обычная")
+                print(a)
+                print(l)
+                print(u)
+                break
 
-    print("\nТест обращения:")
-    times_my = []
-    times_np = []
-    for i in tqdm(range(it)):
-        a = np.random.rand(shape, shape) * 100
+            prev = time.time_ns()
 
-        prev = time.time_ns()
+            pp, lp, up = lu_decomposition_parallel(a)
+            _ = lu_solve(lp, up, pp @ b)
 
-        inv = lu_inv(*lu_decomposition(a))
+            times_par[shape].append((time.time_ns() - prev) / 1e9)
 
-        times_my.append(time.time_ns() - prev)
+            if not np.allclose(pp.T @ lp @ up, a):
+                print("Параллельная")
+                print("L:\n", l)
+                print("Lp:\n", lp)
+                print("A:\n", a)
+                break
 
-        prev = time.time_ns()
+    means = {}
+    for name, d in zip(["Параллельная", "Последовательная"], [times_par, times_my]):
+        means[name] = []
+        for key in d:
+            means[name].append(np.average(d[key]))
 
-        invn = np.linalg.inv(a)
+    for key in means:
+        plt.plot(shapes, means[key], label=key)
 
-        times_np.append(time.time_ns() - prev)
+    plt.legend()
+    plt.grid(True)
+    plt.title("Зависимость времени выполнения от размерности матрицы")
+    plt.xlabel("Размерность матрицы")
+    plt.ylabel("Время в секундах")
 
-        if not np.allclose(inv, invn):
-            times_my.pop(-1)
-            times_np.pop(-1)
-            print(a)
-            print(b)
-            break
-
-    print(f"\nПройдено тестов {i + 1}/{it}")
-    print(f"Время lu_inv: \t\t\t{np.average(times_my) * 1e-9:.10f} секунд")
-    print(f"Время numpy.linalg.inv: {np.average(times_np) * 1e-9:.10f} секунд")
+    plt.savefig("plot.jpg", dpi=300)
+    plt.show()
 
 
 if __name__ == "__main__":
