@@ -5,7 +5,7 @@ import fire  # CLI
 import matplotlib.pyplot as plt
 
 from utilities import parse_matrix  # парсинг матрицы из файла
-from lab1_1.gauss import lu_det, lu_decomposition, lu_inv
+from sem1.lab1_1.gauss import lu_det, lu_decomposition
 
 
 def diag_dominance(a: np.ndarray) -> bool:

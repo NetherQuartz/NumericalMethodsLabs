@@ -11,7 +11,7 @@ from tqdm import tqdm  # прогресс-бары
 import matplotlib.pyplot as plt
 
 from utilities import parse_matrix  # парсинг матрицы из файла
-from lab1_1.gauss import lu_solve
+from sem1.lab1_1.gauss import lu_solve
 
 
 def lu_decomposition(matrix: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarray):

@@ -5,8 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from utilities import str2fun
-from lab1_2.tdma import tdma_solve
-from lab4_1.cauchy import runge_kutta_method
+from sem1.lab1_2.tdma import tdma_solve
+from sem1.lab4_1.cauchy import runge_kutta_method
 
 
 def g(x, y, z):

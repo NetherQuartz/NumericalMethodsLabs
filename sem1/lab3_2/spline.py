@@ -4,7 +4,7 @@ import numpy as np
 import fire  # CLI
 import matplotlib.pyplot as plt
 
-from lab1_2.tdma import tdma_solve
+from sem1.lab1_2.tdma import tdma_solve
 
 
 def f(a, b, c, d, x):

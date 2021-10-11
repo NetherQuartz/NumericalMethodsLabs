@@ -4,7 +4,7 @@ import numpy as np
 import fire  # CLI
 import matplotlib.pyplot as plt
 
-from lab1_1.gauss import lu_decomposition, lu_solve
+from sem1.lab1_1.gauss import lu_decomposition, lu_solve
 
 
 def f(coeffs, x):
