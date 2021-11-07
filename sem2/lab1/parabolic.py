@@ -2,7 +2,6 @@ import fire
 import numpy as np
 import matplotlib.pyplot as plt
 
-from sem1.lab1_2.tdma import tdma_solve
 from utilities import str2fun
 
 
@@ -37,7 +36,7 @@ def solve_analytic(l, N, K, T, solution):
     return u
 
 
-def implicit_solver(l, psi, f, phi0, phil, h, tau, sigma, N, K, bound_type):
+def implicit_solver(l, psi, f, phi0, phil, h, tau, sigma, N, K):
     a = np.zeros(N)
     b = np.zeros(N)
     c = np.zeros(N)
@@ -55,40 +54,21 @@ def implicit_solver(l, psi, f, phi0, phil, h, tau, sigma, N, K, bound_type):
             c[j] = sigma
             d[j] = -u[k - 1][j] - tau * f(j * h, k * tau)
 
-        if bound_type == 'a1p1':
-            a[0] = 0
-            b[0] = -(1 + 2 * sigma)
-            c[0] = sigma
-            d[0] = -(u[k - 1][0] + sigma * phi0(k * tau))
-            a[-1] = sigma
-            b[-1] = -(1 + 2 * sigma)
-            c[-1] = 0
-            d[-1] = -(u[k - 1][-1] + sigma * phil(k * tau))
-        elif bound_type == 'a1p2':
-            a[0] = 0
-            b[0] = -(1 + 2 * sigma)
-            c[0] = sigma
-            d[0] = -(u[k - 1][0] + sigma * phi0(k * tau)) - tau * f(0, k * tau)
-            a[-1] = sigma
-            b[-1] = -(1 + 2 * sigma)
-            c[-1] = 0
-            d[-1] = -(u[k - 1][-1] + sigma * phil(k * tau)) - tau * f((N - 1) * h, k * tau)
-        elif bound_type == 'a1p3':
-            a[0] = 0
-            b[0] = -(1 + 2 * sigma)
-            c[0] = sigma
-            d[0] = -((1 - sigma) * u[k - 1][1] + sigma / 2 * u[k - 1][0]) - tau * f(0, k * tau) - sigma * phi0(k * tau)
-            a[-1] = sigma
-            b[-1] = -(1 + 2 * sigma)
-            c[-1] = 0
-            d[-1] = phil(k * tau) + f((N - 1) * h, k * tau) * h / (2 * tau) * u[k - 1][-1]
+        a[0] = 0
+        b[0] = 1
+        c[0] = 0
+        d[0] = phi0(k * tau)
+        a[-1] = -1
+        b[-1] = 1
+        c[-1] = 0
+        d[-1] = h * phil(k * tau)
 
         u[k] = tma(a, b, c, d)
 
     return u
 
 
-def explicit_solver(l, psi, f, phi0, phil, h, tau, sigma, N, K, bound_type):
+def explicit_solver(l, psi, f, phi0, phil, h, tau, sigma, N, K):
     u = np.zeros((K, N))
     for j in range(1, N - 1):
         u[0][j] = psi(j * h)
@@ -99,17 +79,12 @@ def explicit_solver(l, psi, f, phi0, phil, h, tau, sigma, N, K, bound_type):
             u[k][j] = sigma * u[k - 1][j + 1] + (1 - 2 * sigma) * u[k - 1][j] + sigma * u[k - 1][j - 1] \
                       + tau * f(j * h, k * tau)
 
-        if bound_type == 'a1p1':
-            u[k][-1] = u[k][-2] + phil(k * tau) * h
-        elif bound_type == 'a1p2':
-            u[k][-1] = phil(k * tau)
-        elif bound_type == 'a1p3':
-            u[k][-1] = (phil(k * tau) + u[k][-2] / h + 2 * tau * u[k - 1][-1] / h) / (1 / h + 2 * tau / h)
+        u[k][-1] = u[k][-2] + phil(k * tau) * h
 
     return u
 
 
-def crank_nicholson_solver(l, psi, f, phi0, phil, h, tau, sigma, N, K, bound_type):
+def crank_nicholson_solver(l, psi, f, phi0, phil, h, tau, sigma, N, K):
     theta = 0.5
     a = np.zeros(N)
     b = np.zeros(N)
@@ -126,42 +101,24 @@ def crank_nicholson_solver(l, psi, f, phi0, phil, h, tau, sigma, N, K, bound_typ
             c[j] = sigma
             d[j] = -u[k - 1][j] - tau * f(j * h, k * tau)
 
-        if bound_type == 'a1p1':
-            a[0] = 0
-            b[0] = -(1 + 2 * sigma)
-            c[0] = sigma
-            d[0] = -(u[k - 1][0] + sigma * phi0(k * tau))
-            a[-1] = sigma
-            b[-1] = -(1 + 2 * sigma)
-            c[-1] = 0
-            d[-1] = -(u[k - 1][-1] + sigma * phil(k * tau))
-        elif bound_type == 'a1p2':
-            a[0] = 0
-            b[0] = -(1 + 2 * sigma)
-            c[0] = sigma
-            d[0] = -(u[k - 1][0] + sigma * phi0(k * tau)) - tau * f(0, k * tau)
-            a[-1] = sigma
-            b[-1] = -(1 + 2 * sigma)
-            c[-1] = 0
-            d[-1] = -(u[k - 1][-1] + sigma * phil(k * tau)) - tau * f((N - 1) * h, k * tau)
-        elif bound_type == 'a1p3':
-            a[0] = 0
-            b[0] = -(1 + 2 * sigma)
-            c[0] = sigma
-            d[0] = -((1 - sigma) * u[k - 1][1] + sigma / 2 * u[k - 1][0]) - tau * f(0, k * tau) - sigma * phi0(k * tau)
-            a[-1] = sigma
-            b[-1] = -(1 + 2 * sigma)
-            c[-1] = 0
-            d[-1] = phil(k * tau) + f((N - 1) * h, k * tau) * h / (2 * tau) * u[k - 1][-1]
+        a[0] = 0
+        b[0] = 1
+        c[0] = 0
+        d[0] = phi0(k * tau)
+        a[-1] = -1
+        b[-1] = 1
+        c[-1] = 0
+        d[-1] = h * phil(k * tau)
 
         tmp_imp = tma(a, b, c, d)
 
         tmp_exp = np.zeros(N)
-        tmp_exp[0] = phi0(tau)
+        tmp_exp[0] = phi0(k * tau)
         for j in range(1, N - 1):
             tmp_exp[j] = sigma * u[k - 1][j + 1] + (1 - 2 * sigma) * u[k - 1][j] \
                          + sigma * u[k - 1][j - 1] + tau * f(j * h, k * tau)
-        tmp_exp[-1] = phil(tau)
+
+        tmp_exp[-1] = tmp_exp[-2] + phil(k * tau) * h
 
         for j in range(N):
             u[k][j] = theta * tmp_imp[j] + (1 - theta) * tmp_exp[j]
@@ -176,51 +133,96 @@ def solve(solver, data, N, K, T):
     phi0 = str2fun(data["phi0"])
     phil = str2fun(data["phil"])
     solution = str2fun(data["solution"], variables="x,t")
-    bound_type = data["bound_type"]
 
     h = l / N
     tau = T / K
     sigma = tau / (h ** 2)
 
+    print(sigma)
+
     if solver is solve_analytic:
         return solve_analytic(l, N, K, T, solution)
 
-    return solver(l, psi, f, phi0, phil, h, tau, sigma, N, K, bound_type)
+    return solver(l, psi, f, phi0, phil, h, tau, sigma, N, K)
 
 
 def main():
     data = {
-        "l": np.pi,
+        "l": np.pi / 2,
         "psi": "0",
         "f": "cos(x) * (cos(t) + sin(t))",
         "phi0": "sin(t)",
         "phil": "-sin(t)",
         "solution": "sin(t) * cos(x)",
-        "bound_type": "a1p2"
     }
 
-    N = 30
-    K = 100
-    T = 30
+    # l — верхняя граница x
+    N = 10  # количество отрезков x
+    K = 1000  # количество отрезков t
+    T = 10  # верхняя граница времени
 
     analytic = solve(solve_analytic, data, N, K, T)
     explicit = solve(explicit_solver, data, N, K, T)
     implicit = solve(implicit_solver, data, N, K, T)
     crank_nicholson = solve(crank_nicholson_solver, data, N, K, T)
 
-    t = 20
-    x = 20
+    xaxis = np.linspace(0, data["l"], N)
 
-    # plt.title(f"$t={t}$")
-    plt.title(f"$x={x}$")
+    analytic_f = str2fun(data["solution"], variables="t,x")
 
-    plt.plot(analytic[x, :], label="analytic")
-    plt.plot(implicit[x, :], label="implicit")
-    # plt.plot(explicit[x, :], label="explicit")
-    # plt.plot(crank_nicholson[x, :], label="crank_nicholson")
+    t = 0.5
+
+    plt.plot(xaxis, analytic_f(0, xaxis), label="analytical, t=0")
+    plt.plot(xaxis, explicit[0, :], label="explicit, t=0")
+    plt.plot(xaxis, implicit[0, :], label="implicit, t=0")
+    plt.plot(xaxis, crank_nicholson[0, :], label="crank_nicholson, t=0")
+
+    plt.plot(xaxis, analytic_f(t, xaxis), label=f"analytical, t={t}")
+    plt.plot(xaxis, explicit[int(K / T * t), :], label=f"explicit, t={t}")
+    plt.plot(xaxis, implicit[int(K / T * t), :], label=f"implicit, t={t}")
+    plt.plot(xaxis, crank_nicholson[int(K / T * t), :], label=f"crank_nicholson, t={t}")
 
     plt.xlabel("x")
     plt.ylabel("u")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    eps = {
+        "explicit": [],
+        "implicit": [],
+        "crank_nicholson": []
+    }
+
+    l = data["l"]
+
+    for N, K, T in [(5, 800, 10),
+                    (10, 1000, 10),
+                    (20, 4000, 10),
+                    (40, 15000, 10)]:
+        xaxis = np.linspace(0, data["l"], N)
+
+        explicit = solve(explicit_solver, data, N, K, T)
+        implicit = solve(implicit_solver, data, N, K, T)
+        crank_nicholson = solve(crank_nicholson_solver, data, N, K, T)
+
+        analytic_sol = analytic_f(t, xaxis)
+        explicit_sol = explicit[int(K / T * t), :]
+        implicit_sol = implicit[int(K / T * t), :]
+        crank_nicholson_sol = crank_nicholson[int(K / T * t), :]
+
+        for method, sol in zip(["explicit", "implicit", "crank_nicholson"],
+                               [explicit_sol, implicit_sol, crank_nicholson_sol]):
+            eps[method].append((np.mean(np.abs(analytic_sol - sol)), l / N))
+
+    for method, value in eps.items():
+        print(method, value)
+        mean, step = list(zip(*value))
+        plt.plot(step, mean, label=method)
+
+    plt.xlabel("Шаг")
+    plt.ylabel("Погрешность")
+    plt.grid(True)
     plt.legend()
     plt.show()
 
