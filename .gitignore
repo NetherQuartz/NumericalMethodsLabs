@@ -128,9 +128,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# poetry
-poetry.lock
-
 # pictures
 /lab*/*.jpg
 /lab*/*.png
