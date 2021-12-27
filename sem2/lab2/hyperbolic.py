@@ -76,9 +76,7 @@ def explicit_solver(a, b, c, alpha, beta, gamma, delta, psi1, psi2, f, phi0, phi
         u[1][j] = psi1(j * h) + psi2(j * h) * tau
 
     for k in range(2, K):
-        u[k][0] = phi0(k * tau)
         for j in range(1, N - 1):
-            u[0][j] = psi1(j * h)
             p1 = (a ** 2) * (tau ** 2) / (h ** 2)
             p2 = b * (tau ** 2) / (2 * h)
             p3 = c * (tau ** 2)
@@ -139,26 +137,25 @@ def main():
     }
 
     # l — верхняя граница x
-    N = 20  # количество отрезков x
-    K = 2000  # количество отрезков t
+    N = 40  # количество отрезков x
+    K = 10000  # количество отрезков t
     T = 10  # верхняя граница времени
 
     explicit = solve(explicit_solver, data, N, K, T)
     implicit = solve(implicit_solver, data, N, K, T)
 
     xaxis = np.linspace(0, data["l"], N)
-
-    analytic_f = str2fun(data["solution"], variables="t,x")
+    analytic = solve(solve_analytic, data, N, K, T)
 
     t = 0.5
 
-    plt.plot(xaxis[1:], analytic_f(0, xaxis)[1:], label="analytical, t=0")
-    plt.plot(xaxis[1:], explicit[0, 1:], label="explicit, t=0")
-    plt.plot(xaxis[1:], implicit[0, 1:], label="implicit, t=0")
+    plt.plot(xaxis, analytic[0], label="analytical, t=0")
+    plt.plot(xaxis, explicit[0], label="explicit, t=0")
+    plt.plot(xaxis, implicit[0], label="implicit, t=0")
 
-    plt.plot(xaxis[1:], analytic_f(t, xaxis)[1:], label=f"analytical, t={t}")
-    plt.plot(xaxis[1:], explicit[int(K / T * t), 1:], label=f"explicit, t={t}")
-    plt.plot(xaxis[1:], implicit[int(K / T * t), 1:], label=f"implicit, t={t}")
+    plt.plot(xaxis, analytic[int(K / T * t)], label=f"analytical, t={t}")
+    plt.plot(xaxis, explicit[int(K / T * t)], label=f"explicit, t={t}")
+    plt.plot(xaxis, implicit[int(K / T * t)], label=f"implicit, t={t}")
 
     plt.xlabel("x")
     plt.ylabel("u")
@@ -177,12 +174,12 @@ def main():
                     (10, 1000, 10),
                     (20, 4000, 10),
                     (40, 15000, 10)]:
-        xaxis = np.linspace(0, data["l"], N)
 
         explicit = solve(explicit_solver, data, N, K, T)
         implicit = solve(implicit_solver, data, N, K, T)
+        analytic = solve(solve_analytic, data, N, K, T)
 
-        analytic_sol = analytic_f(t, xaxis)
+        analytic_sol = analytic[int(K / T * t), :]
         explicit_sol = explicit[int(K / T * t), :]
         implicit_sol = implicit[int(K / T * t), :]
 
@@ -193,7 +190,7 @@ def main():
     for method, value in eps.items():
         print(method, value)
         mean, step = list(zip(*value))
-        plt.plot(step, mean, label=method)
+        plt.plot(step, mean, label=method, marker="o")
 
     plt.xlabel("Шаг")
     plt.ylabel("Погрешность")
