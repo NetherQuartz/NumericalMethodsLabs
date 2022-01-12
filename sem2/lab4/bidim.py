@@ -199,7 +199,7 @@ def main():
         "psi": "cos(2 * x) * sinh(y)",
         "l1": np.pi / 4,
         "l2": np.log(2),
-        "lt": 1000,
+        "lt": 1,
         "a": 0.0000001,
         "solution": "cos(2 * x) * sinh(y) * exp(-3 * a * t)"
     }
@@ -242,23 +242,23 @@ def main():
 
     plt.figure()
     K = 60
-    plt.suptitle(f"$k={K}$")
+    plt.suptitle(f"Метод переменных направлений при $k={K}$")
     x = np.linspace(0, data["l1"], N1)
     y = np.linspace(0, data["l2"], N2)
 
     plt.subplot(121)
     plt.plot(x, analytic[:, 0, K], label=f"Analytic $y=0$")
     plt.plot(x, analytic[:, -1, K], label=f"Analytic $y={data['l2']:.2f}$")
-    plt.plot(x, analytic[:, 5, K], label=f"Analytic $j=5$")
+    plt.plot(x, analytic[:, analytic.shape[1] // 2, K], label=f"Analytic $y={data['l2'] / 2:.2f}$")
 
 
     plt.plot(x, explicit[:, 0, K], label=f"Explicit $y=0$")
     plt.plot(x, explicit[:, -1, K], label=f"Explicit $y={data['l2']:.2f}$")
-    plt.plot(x, explicit[:, 5, K], label=f"Explicit $j=5$")
+    plt.plot(x, explicit[:, explicit.shape[1] // 2, K], label=f"Explicit $y={data['l2'] / 2:.2f}$")
 
     plt.plot(x, alter_dir[:, 0, K], label=f"Alt. dir. $y=0$")
     plt.plot(x, alter_dir[:, -1, K], label=f"Alt. dir. $y={data['l2']:.2f}$")
-    plt.plot(x, alter_dir[:, 5, K], label=f"Alt. dir. $j=5$")
+    plt.plot(x, alter_dir[:, explicit.shape[1] // 2, K], label=f"Alt. dir. $y={data['l2'] / 2:.2f}$")
 
     plt.xlabel("x")
     plt.ylabel("u")
@@ -268,21 +268,57 @@ def main():
     plt.subplot(122)
     plt.plot(y, analytic[0, :, K], label=f"Analytic $x=0$")
     plt.plot(y, analytic[-1, :, K], label=f"Analytic $x={data['l1']:.2f}$")
-    plt.plot(y, analytic[5, :, K], label=f"Analytic $i=5$")
+    plt.plot(y, analytic[analytic.shape[0] // 2, :, K], label=f"Analytic $x={data['l1'] / 2:.2f}$")
 
     plt.plot(y, explicit[0, :, K], label=f"Explicit $x=0$")
     plt.plot(y, explicit[-1, :, K], label=f"Explicit $x={data['l1']:.2f}$")
-    plt.plot(y, explicit[5, :, K], label=f"Explicit $i=5$")
+    plt.plot(y, explicit[explicit.shape[0] // 2, :, K], label=f"Explicit $y={data['l1'] / 2:.2f}$")
 
     plt.plot(y, alter_dir[0, :, K], label=f"Alt. dir. $x=0$")
     plt.plot(y, alter_dir[-1, :, K], label=f"Alt. dir. $x={data['l1']:.2f}$")
-    plt.plot(y, alter_dir[5, :, K], label=f"Alt. dir. $i=5$")
+    plt.plot(y, alter_dir[alter_dir.shape[0] // 2, :, K], label=f"Alt. dir. $x={data['l1'] / 2:.2f}$")
 
     plt.xlabel("y")
     plt.ylabel("u")
     plt.legend()
     plt.grid(True)
 
+    plt.figure()
+    plt.suptitle("Погрешность в зависимости от шага $h=max(h1,h2,ht)$ для шести разных моментов $t$")
+    NT = 11
+    for j, k in enumerate(range(0, NT, 2)):
+        eps = {
+            "explicit": [],
+            "alter. dir.": []
+        }
+        plt.subplot(2, 3, j + 1)
+        plt.title(f"$t={data['lt'] * (j + 1) / 6:.3f}$")
+        for N in [2, 3, 5, 10, 20, 50]:
+
+            explicit = solve(explicit_solve, data, N, N, NT)
+            alter_dir = solve(alter_directions_solve, data, N, N, NT)
+            analytic = solve(analytic_solve, data, N, N, NT)
+
+            h1 = data["l1"] / (N - 1)
+            h2 = data["l2"] / (N - 1)
+            ht = data["lt"] / (NT - 1)
+            h = max(h1, h2, ht)
+
+            for method, sol in zip(["explicit", "alter. dir."], [explicit, alter_dir]):
+                eps[method].append((np.sqrt(np.sum((analytic[:, :, k] - sol[:, :, k]) ** 2)), h))
+
+        i = 0
+        for method, value in eps.items():
+            print(method, sorted(value, key=lambda t: t[1]))
+            mean, step = list(zip(*value))
+            plt.plot(step, mean, label=method, marker="o", linewidth=2, linestyle="dotted" if i == 1 else "solid")
+            i += 1
+
+        if j + 1 > 3:
+            plt.xlabel("Шаг")
+        plt.ylabel("Погрешность")
+        plt.grid(True)
+        plt.legend()
     plt.show()
 
 
