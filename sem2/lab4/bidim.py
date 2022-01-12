@@ -14,10 +14,6 @@ def analytic_solve(solution, N1, N2, NT, l1, l2, lt, a):
     return u
 
 
-def alter_directions_solve(phi1, phi2, phi3, phi4, psi, N1, N2, NT, l1, l2, lt, f, a):
-    pass
-
-
 def explicit_solve(phi1, phi2, phi3, phi4, psi, N1, N2, NT, l1, l2, lt, f, a):
     u = np.zeros((N1, N2, NT))
     h1 = l1 / (N1 - 1)
@@ -43,6 +39,119 @@ def explicit_solve(phi1, phi2, phi3, phi4, psi, N1, N2, NT, l1, l2, lt, f, a):
 
         for j in range(1, N2):
             u[-1, j, k] = u[-2, j, k] + h1 * phi4(j * h2, k * ht, a)
+
+    return u
+
+
+def tma(a, b, c, d):
+    size = len(a)
+    p = [-c[0] / b[0]]
+    q = [d[0] / b[0]]
+
+    for i in range(1, size):
+        p_tmp = -c[i] / (b[i] + a[i] * p[i - 1])
+        q_tmp = (d[i] - a[i] * q[i - 1]) / (b[i] + a[i] * p[i - 1])
+        p.append(p_tmp)
+        q.append(q_tmp)
+
+    x = [0 for _ in range(size)]
+    x[size - 1] = q[size - 1]
+
+    for i in range(size - 2, -1, -1):
+        x[i] = p[i] * x[i + 1] + q[i]
+
+    return x
+
+
+def alter_directions_solve(phi1, phi2, phi3, phi4, psi, N1, N2, NT, l1, l2, lt, f, a):
+    u = np.zeros((N1, N2, NT))
+    h1 = l1 / (N1 - 1)
+    h2 = l2 / (N2 - 1)
+    ht = lt / (NT - 1)
+
+    # s1 = a * ht / h1 ** 2
+    # s2 = a * ht / h2 ** 2
+
+    s1 = 2 * a / (ht * h1 ** 2)
+    s2 = 2 * a / (ht * h2 ** 2)
+
+    for i in range(N1):
+        for j in range(N2):
+            u[i, j, 0] = psi(i * h1, j * h2, a)
+
+    u_sec = np.zeros((N1, N2))
+    A = ([], [])
+    B = ([], [])
+    C = ([], [])
+
+    for _ in range(N1):
+        A[0].append(-s1)
+        B[0].append(2 * s1 + 1)
+        C[0].append(-s1)
+
+    A[0][0] = 0
+    B[0][0] = 1
+    C[0][0] = 0
+    A[0][-1] = -1
+    B[0][-1] = 1
+    C[0][-1] = 0
+
+    for _ in range(N2):
+        A[1].append(-s2)
+        B[1].append(2 * s2 + 1)
+        C[1].append(-s2)
+
+    A[1][0] = 0
+    B[1][0] = -1
+    C[1][0] = 1
+    A[1][-1] = 0
+    B[1][-1] = 1
+    C[1][-1] = 0
+
+    for k in range(1, NT):
+        t1 = (k - 1/2) * ht
+        t2 = k * ht
+        d = np.zeros(N1)
+
+        # for i in range(N1):
+            # u_sec[i, -1] = phi2(i * h1, t1, a)
+            # u_sec[i, 0] = u_sec[i, 1] - phi1(i * h1, t1, a) * h2
+
+        for j in range(1, N2 - 1):
+            d[0] = phi3(j * h2, t1, a)
+            d[-1] = phi4(j * h2, t1, a) * h1
+            for i in range(1, N1 - 1):
+            # for i in range(N1):
+                d[i] = u[i, j, k - 1] + s2 * (u[i, j + 1, k - 1] - 2 * u[i, j, k - 1] + u[i, j - 1, k - 1])
+
+            ux = tma(A[0], B[0], C[0], d)
+            for i in range(N1):
+                u_sec[i, j] = ux[i]
+
+        for i in range(N1):
+            u_sec[i, 0] = u_sec[i, 1] - phi1(i * h1, t1, a) * h2
+            u_sec[i, -1] = phi2(i * h1, t1, a)
+
+        d = np.zeros(N2)
+
+        # for j in range(N2):
+        #     u[0, j, k] = phi3(j * h2, t2, a)
+        #     u[-1, j, k] = u[-2, j, k] + phi4(j * h2, t2, a) * h1
+
+        for i in range(1, N1 - 1):
+            d[0] = phi1(i * h1, t2, a) * h2
+            d[-1] = phi2(i * h1, t2, a)
+            for j in range(1, N2 - 1):
+            # for j in range(N2):
+                d[j] = u_sec[i, j] + s1 * (u_sec[i + 1, j] - 2 * u_sec[i, j] + u_sec[i - 1, j])
+
+            uy = tma(A[1], B[1], C[1], d)
+            for j in range(N2):
+                u[i, j, k] = uy[j]
+
+        for j in range(N2):
+            u[0, j, k] = phi3(j * h2, t2, a)
+            u[-1, j, k] = u[-2, j, k] + phi4(j * h2, t2, a) * h1
 
     return u
 
@@ -91,19 +200,20 @@ def main():
         "l1": np.pi / 4,
         "l2": np.log(2),
         "lt": 1000,
-        "a": 0.0001,
+        "a": 0.0000001,
         "solution": "cos(2 * x) * sinh(y) * exp(-3 * a * t)"
     }
 
     N1 = 10  # количество отрезков x
-    N2 = 15  # количество отрезков y
+    N2 = 10  # количество отрезков y
     NT = 100  # количество отрезков времени
 
     analytic = solve(analytic_solve, data, N1, N2, NT)
     explicit = solve(explicit_solve, data, N1, N2, NT)
+    alter_dir = solve(alter_directions_solve, data, N1, N2, NT)
 
     fig = plt.figure()
-    plt.suptitle("Метод переменных направлений в три разных момента времени\n(красная сетка — аналитическое решение)")
+    plt.suptitle("Явный метод в три разных момента времени\n(красная сетка — аналитическое решение)")
     ax = fig.add_subplot(131, projection="3d", zlim=(0, 0.8), title="$t=0$")
     plot3d(ax, explicit[:, :, 0], data["l1"], data["l2"])
     plot3d(ax, analytic[:, :, 0], data["l1"], data["l2"], wireframe=True)
@@ -115,6 +225,64 @@ def main():
     ax = fig.add_subplot(133, projection="3d", zlim=(0, 0.8), title=f"$t=lt={data['lt']}$")
     plot3d(ax, explicit[:, :, -1], data["l1"], data["l2"])
     plot3d(ax, analytic[:, :, -1], data["l1"], data["l2"], wireframe=True)
+
+    fig = plt.figure()
+    plt.suptitle("Метод переменных направлений метод в три разных момента времени\n(красная сетка — аналитическое решение)")
+    ax = fig.add_subplot(131, projection="3d", zlim=(0, 0.8), title="$t=0$")
+    plot3d(ax, alter_dir[:, :, 0], data["l1"], data["l2"])
+    plot3d(ax, analytic[:, :, 0], data["l1"], data["l2"], wireframe=True)
+
+    ax = fig.add_subplot(132, projection="3d", zlim=(0, 0.8), title=r"$t=\frac{lt}{2}=" + str(data["lt"] / 2) + "$")
+    plot3d(ax, alter_dir[:, :, explicit.shape[2] // 2], data["l1"], data["l2"])
+    plot3d(ax, analytic[:, :, analytic.shape[2] // 2], data["l1"], data["l2"], wireframe=True)
+
+    ax = fig.add_subplot(133, projection="3d", zlim=(0, 0.8), title=f"$t=lt={data['lt']}$")
+    plot3d(ax, alter_dir[:, :, -1], data["l1"], data["l2"])
+    plot3d(ax, analytic[:, :, -1], data["l1"], data["l2"], wireframe=True)
+
+    plt.figure()
+    K = 60
+    plt.suptitle(f"$k={K}$")
+    x = np.linspace(0, data["l1"], N1)
+    y = np.linspace(0, data["l2"], N2)
+
+    plt.subplot(121)
+    plt.plot(x, analytic[:, 0, K], label=f"Analytic $y=0$")
+    plt.plot(x, analytic[:, -1, K], label=f"Analytic $y={data['l2']:.2f}$")
+    plt.plot(x, analytic[:, 5, K], label=f"Analytic $j=5$")
+
+
+    plt.plot(x, explicit[:, 0, K], label=f"Explicit $y=0$")
+    plt.plot(x, explicit[:, -1, K], label=f"Explicit $y={data['l2']:.2f}$")
+    plt.plot(x, explicit[:, 5, K], label=f"Explicit $j=5$")
+
+    plt.plot(x, alter_dir[:, 0, K], label=f"Alt. dir. $y=0$")
+    plt.plot(x, alter_dir[:, -1, K], label=f"Alt. dir. $y={data['l2']:.2f}$")
+    plt.plot(x, alter_dir[:, 5, K], label=f"Alt. dir. $j=5$")
+
+    plt.xlabel("x")
+    plt.ylabel("u")
+    plt.legend()
+    plt.grid(True)
+
+    plt.subplot(122)
+    plt.plot(y, analytic[0, :, K], label=f"Analytic $x=0$")
+    plt.plot(y, analytic[-1, :, K], label=f"Analytic $x={data['l1']:.2f}$")
+    plt.plot(y, analytic[5, :, K], label=f"Analytic $i=5$")
+
+    plt.plot(y, explicit[0, :, K], label=f"Explicit $x=0$")
+    plt.plot(y, explicit[-1, :, K], label=f"Explicit $x={data['l1']:.2f}$")
+    plt.plot(y, explicit[5, :, K], label=f"Explicit $i=5$")
+
+    plt.plot(y, alter_dir[0, :, K], label=f"Alt. dir. $x=0$")
+    plt.plot(y, alter_dir[-1, :, K], label=f"Alt. dir. $x={data['l1']:.2f}$")
+    plt.plot(y, alter_dir[5, :, K], label=f"Alt. dir. $i=5$")
+
+    plt.xlabel("y")
+    plt.ylabel("u")
+    plt.legend()
+    plt.grid(True)
+
     plt.show()
 
 
