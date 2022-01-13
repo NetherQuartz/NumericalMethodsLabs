@@ -27,23 +27,28 @@ def liebmann_solve(phi1, phi2, phi3, phi4, alpha, beta, N1, N2, l1, l2, f, eps):
         u[0, j] = phi1(j * h2)
         u[-1, j] = phi2(j * h2)
 
+    s1 = h1 ** 2 / (h1 ** 2 + h2 ** 2) / 2
+    s2 = h2 ** 2 / (h1 ** 2 + h2 ** 2) / 2
+    s3 = h1 ** 2 * h2 ** 2 / (h1 ** 2 + h2 ** 2) / 2
+
     k = 0
     u_prev = u.copy()
-    err = []
     while k == 0 or norm(u - u_prev) > eps:
         u_prev = u.copy()
         for i in range(1, N1 - 1):
 
             for j in range(1, N2 - 1):
-                c1 = h2 ** 2 * (u_prev[i + 1, j] + u_prev[i - 1, j])
-                c2 = h1 ** 2 * (u_prev[i, j + 1] + u_prev[i, j - 1])
-                u[i, j] = (c1 + c2) / (2 * h1 ** 2 + 2 * h2 ** 2 - h1 ** 2 * h2 ** 2)
+                # c1 = h2 ** 2 * (u_prev[i + 1, j] + u_prev[i - 1, j])
+                # c2 = h1 ** 2 * (u_prev[i, j + 1] + u_prev[i, j - 1])
+                # u[i, j] = (c1 + c2) / (2 * h1 ** 2 + 2 * h2 ** 2 - h1 ** 2 * h2 ** 2)
+                u[i, j] = s1 * (u_prev[i, j + 1] + u_prev[i, j - 1]) + \
+                          s2 * (u_prev[i + 1, j] + u_prev[i - 1, j]) + \
+                          s3 * u_prev[i, j]
 
             u[i, 1] = u[i, 0] + phi3(i * h1) * h2
             u[i, -1] = (h2 * phi4(i * h1) + alpha[3] * u[i, -2]) / (alpha[3] + h2 * beta[3])
 
         k += 1
-        err.append(norm(u - u_prev))
         if k > 5000:
             raise Exception(f"Слишком большое число итераций: {k}")
     return u
@@ -57,6 +62,10 @@ def seidel_solve(phi1, phi2, phi3, phi4, alpha, beta, N1, N2, l1, l2, f, eps):
         u[0, j] = phi1(j * h2)
         u[-1, j] = phi2(j * h2)
 
+    s1 = h1 ** 2 / (h1 ** 2 + h2 ** 2) / 2
+    s2 = h2 ** 2 / (h1 ** 2 + h2 ** 2) / 2
+    s3 = h1 ** 2 * h2 ** 2 / (h1 ** 2 + h2 ** 2) / 2
+
     k = 0
     u_prev = u.copy()
     err = []
@@ -66,9 +75,12 @@ def seidel_solve(phi1, phi2, phi3, phi4, alpha, beta, N1, N2, l1, l2, f, eps):
             u[i, 1] = u[i, 0] + phi3(i * h1) * h2
             u[i, -1] = (h2 * phi4(i * h1) + alpha[3] * u[i, -2]) / (alpha[3] + h2 * beta[3])
             for j in range(1, N2 - 1):
-                c1 = h2 ** 2 * (u_prev[i + 1, j] + u[i - 1, j])
-                c2 = h1 ** 2 * (u_prev[i, j + 1] + u[i, j - 1])
-                u[i, j] = (c1 + c2) / (2 * h1 ** 2 + 2 * h2 ** 2 - h1 ** 2 * h2 ** 2)
+                # c1 = h2 ** 2 * (u_prev[i + 1, j] + u[i - 1, j])
+                # c2 = h1 ** 2 * (u_prev[i, j + 1] + u[i, j - 1])
+                # u[i, j] = (c1 + c2) / (2 * h1 ** 2 + 2 * h2 ** 2 - h1 ** 2 * h2 ** 2)
+                u[i, j] = s1 * (u_prev[i, j + 1] + u[i, j - 1]) + \
+                          s2 * (u_prev[i + 1, j] + u[i - 1, j]) + \
+                          s3 * u_prev[i, j]
 
         k += 1
         err.append(norm(u - u_prev))
@@ -145,13 +157,16 @@ def main():
     ax.set_title("Seidel")
 
     plt.figure()
-    plt.suptitle("Bounds")
+    plt.suptitle("Сечения графика на границах и посередине")
     xt = np.linspace(0, data["l1"], N1)
     yt = np.linspace(0, data["l2"], N2)
     plt.subplot(121)
     plt.plot(yt, analytic[0, :], label="$x=0$ analytic")
     plt.plot(yt, liebmann[0, :], label="$x=0$ liebmann")
     plt.plot(yt, seidel[0, :], label="$x=0$ seidel")
+    plt.plot(yt, analytic[analytic.shape[0] // 2, :], label=r"$x=\frac{l_1}{2}$ analytic")
+    plt.plot(yt, liebmann[liebmann.shape[0] // 2, :], label=r"$x=\frac{l_1}{2}$ liebmann")
+    plt.plot(yt, seidel[seidel.shape[0] // 2, :], label=r"$x=\frac{l_1}{2}$ seidel")
     plt.plot(yt, analytic[-1, :], label="$x=l_1$ analytic")
     plt.plot(yt, liebmann[-1, :], label="$x=l_1$ liebmann")
     plt.plot(yt, seidel[-1, :], label="$x=l_1$ seidel")
@@ -163,6 +178,9 @@ def main():
     plt.plot(xt, analytic[:, 0], label="$y=0$ analytic")
     plt.plot(xt, liebmann[:, 0], label="$y=0$ liebmann")
     plt.plot(xt, seidel[:, 0], label="$y=0$ seidel")
+    plt.plot(xt, analytic[:, analytic.shape[1] // 2], label=r"$y=\frac{l_2}{2}$ analytic")
+    plt.plot(xt, liebmann[:, liebmann.shape[1] // 2], label=r"$y=\frac{l_2}{2}$ liebmann")
+    plt.plot(xt, seidel[:, liebmann.shape[1] // 2], label=r"$y=\frac{l_2}{2}$ seidel")
     plt.plot(xt, analytic[:, -1], label="$y=l_2$ analytic")
     plt.plot(xt, liebmann[:, -1], label="$y=l_2$ liebmann")
     plt.plot(xt, seidel[:, -1], label="$y=l_2$ seidel")
