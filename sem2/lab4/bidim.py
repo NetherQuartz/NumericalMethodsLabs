@@ -69,11 +69,8 @@ def alter_directions_solve(phi1, phi2, phi3, phi4, psi, N1, N2, NT, l1, l2, lt, 
     h2 = l2 / (N2 - 1)
     ht = lt / (NT - 1)
 
-    # s1 = a * ht / h1 ** 2
-    # s2 = a * ht / h2 ** 2
-
-    s1 = 2 * a / (ht * h1 ** 2)
-    s2 = 2 * a / (ht * h2 ** 2)
+    s1 = a * ht / h1 ** 2 / 2
+    s2 = a * ht / h2 ** 2 / 2
 
     for i in range(N1):
         for j in range(N2):
@@ -113,15 +110,10 @@ def alter_directions_solve(phi1, phi2, phi3, phi4, psi, N1, N2, NT, l1, l2, lt, 
         t2 = k * ht
         d = np.zeros(N1)
 
-        # for i in range(N1):
-            # u_sec[i, -1] = phi2(i * h1, t1, a)
-            # u_sec[i, 0] = u_sec[i, 1] - phi1(i * h1, t1, a) * h2
-
         for j in range(1, N2 - 1):
             d[0] = phi3(j * h2, t1, a)
             d[-1] = phi4(j * h2, t1, a) * h1
             for i in range(1, N1 - 1):
-            # for i in range(N1):
                 d[i] = u[i, j, k - 1] + s2 * (u[i, j + 1, k - 1] - 2 * u[i, j, k - 1] + u[i, j - 1, k - 1])
 
             ux = tma(A[0], B[0], C[0], d)
@@ -134,15 +126,10 @@ def alter_directions_solve(phi1, phi2, phi3, phi4, psi, N1, N2, NT, l1, l2, lt, 
 
         d = np.zeros(N2)
 
-        # for j in range(N2):
-        #     u[0, j, k] = phi3(j * h2, t2, a)
-        #     u[-1, j, k] = u[-2, j, k] + phi4(j * h2, t2, a) * h1
-
         for i in range(1, N1 - 1):
             d[0] = phi1(i * h1, t2, a) * h2
             d[-1] = phi2(i * h1, t2, a)
             for j in range(1, N2 - 1):
-            # for j in range(N2):
                 d[j] = u_sec[i, j] + s1 * (u_sec[i + 1, j] - 2 * u_sec[i, j] + u_sec[i - 1, j])
 
             uy = tma(A[1], B[1], C[1], d)
@@ -200,7 +187,7 @@ def main():
         "l1": np.pi / 4,
         "l2": np.log(2),
         "lt": 1,
-        "a": 0.0000001,
+        "a": 0.001,
         "solution": "cos(2 * x) * sinh(y) * exp(-3 * a * t)"
     }
 
