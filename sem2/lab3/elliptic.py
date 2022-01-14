@@ -195,21 +195,23 @@ def main():
         "seidel": []
     }
 
-    l1 = data["l1"]
-
-    for N in [2, 3, 5, 10, 20, 50][::-1]:
+    for N in range(2, 110, 20):
 
         liebmann = solve(liebmann_solve, data, N, N)
         seidel = solve(seidel_solve, data, N, N)
         analytic = solve(solve_analytic, data, N, N)
 
+        h = max(data["l1"] / (N - 1), data["l2"] / (N - 1))
+
         for method, sol in zip(["liebmann", "seidel"], [liebmann, seidel]):
-            eps[method].append((norm(analytic - sol), N))
+            eps[method].append((norm(analytic - sol), h))
 
     for method, value in eps.items():
         print(method, sorted(value, key=lambda t: t[1]))
         mean, step = list(zip(*value))
-        plt.plot(1 / np.array(step[::-1]), mean, label=method, marker="o")
+        mean = sorted(mean)
+        step = sorted(step)
+        plt.plot(step, mean, label=method, marker="o")
 
     plt.xlabel("Шаг")
     plt.ylabel("Погрешность")
