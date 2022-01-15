@@ -35,9 +35,8 @@ def liebmann_solve(phi1, phi2, phi3, phi4, alpha, beta, N1, N2, l1, l2, f, eps):
     u_prev = u.copy()
     while k == 0 or norm(u - u_prev) > eps:
         u_prev = u.copy()
-        for i in range(1, N1 - 1):
-
-            for j in range(1, N2 - 1):
+        for j in range(1, N2 - 1):
+            for i in range(1, N1 - 1):
                 # c1 = h2 ** 2 * (u_prev[i + 1, j] + u_prev[i - 1, j])
                 # c2 = h1 ** 2 * (u_prev[i, j + 1] + u_prev[i, j - 1])
                 # u[i, j] = (c1 + c2) / (2 * h1 ** 2 + 2 * h2 ** 2 - h1 ** 2 * h2 ** 2)
@@ -45,12 +44,10 @@ def liebmann_solve(phi1, phi2, phi3, phi4, alpha, beta, N1, N2, l1, l2, f, eps):
                           s2 * (u_prev[i + 1, j] + u_prev[i - 1, j]) + \
                           s3 * u_prev[i, j]
 
-            u[i, 1] = u[i, 0] + phi3(i * h1) * h2
-            u[i, -1] = (h2 * phi4(i * h1) + alpha[3] * u[i, -2]) / (alpha[3] + h2 * beta[3])
+                u[i, 1] = u_prev[i, 0] + phi3(i * h1) * h2
+                u[i, -1] = (h2 * phi4(i * h1) + alpha[3] * u_prev[i, -2]) / (alpha[3] + h2 * beta[3])
 
         k += 1
-        if k > 5000:
-            raise Exception(f"Слишком большое число итераций: {k}")
     return u
 
 
@@ -68,13 +65,10 @@ def seidel_solve(phi1, phi2, phi3, phi4, alpha, beta, N1, N2, l1, l2, f, eps):
 
     k = 0
     u_prev = u.copy()
-    err = []
     while k == 0 or norm(u - u_prev) > eps:
         u_prev = u.copy()
-        for i in range(1, N1 - 1):
-            u[i, 1] = u[i, 0] + phi3(i * h1) * h2
-            u[i, -1] = (h2 * phi4(i * h1) + alpha[3] * u[i, -2]) / (alpha[3] + h2 * beta[3])
-            for j in range(1, N2 - 1):
+        for j in range(1, N2 - 1):
+            for i in range(1, N1 - 1):
                 # c1 = h2 ** 2 * (u_prev[i + 1, j] + u[i - 1, j])
                 # c2 = h1 ** 2 * (u_prev[i, j + 1] + u[i, j - 1])
                 # u[i, j] = (c1 + c2) / (2 * h1 ** 2 + 2 * h2 ** 2 - h1 ** 2 * h2 ** 2)
@@ -82,10 +76,10 @@ def seidel_solve(phi1, phi2, phi3, phi4, alpha, beta, N1, N2, l1, l2, f, eps):
                           s2 * (u_prev[i + 1, j] + u[i - 1, j]) + \
                           s3 * u_prev[i, j]
 
+                u[i, 1] = u_prev[i, 0] + phi3(i * h1) * h2
+                u[i, -1] = (h2 * phi4(i * h1) + alpha[3] * u_prev[i, -2]) / (alpha[3] + h2 * beta[3])
+
         k += 1
-        err.append(norm(u - u_prev))
-        if k > 5000:
-            raise Exception(f"Слишком большое число итераций: {k}")
     return u
 
 
@@ -134,11 +128,11 @@ def main():
         "l1": np.pi / 2,
         "l2": 1,
         "solution": "y * sin(x)",
-        "eps": 1e-4
+        "eps": 1e-7
     }
 
-    N1 = 10  # количество отрезков x
-    N2 = 10  # количество отрезков y
+    N1 = 15  # количество отрезков x
+    N2 = 15  # количество отрезков y
 
     analytic = solve(solve_analytic, data, N1, N2)
     liebmann = solve(liebmann_solve, data, N1, N2)
@@ -195,7 +189,7 @@ def main():
         "seidel": []
     }
 
-    for N in range(2, 110, 20):
+    for N in [10, 15, 20, 25, 30]:
 
         liebmann = solve(liebmann_solve, data, N, N)
         seidel = solve(seidel_solve, data, N, N)
@@ -206,12 +200,12 @@ def main():
         for method, sol in zip(["liebmann", "seidel"], [liebmann, seidel]):
             eps[method].append((norm(analytic - sol), h))
 
+    c = 0
     for method, value in eps.items():
-        print(method, sorted(value, key=lambda t: t[1]))
         mean, step = list(zip(*value))
-        mean = sorted(mean)
-        step = sorted(step)
-        plt.plot(step, mean, label=method, marker="o")
+        print(f"Средняя ошибка {method}: {np.mean(mean)}")
+        plt.plot(step, mean, label=method, marker="o", linestyle="dotted" if c == 1 else "solid", linewidth=2)
+        c += 1
 
     plt.xlabel("Шаг")
     plt.ylabel("Погрешность")
